@@ -1,0 +1,7 @@
+target
+gen
+.git
+.gitignore
+build.log
+scripts
+.vscode

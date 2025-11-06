@@ -1,0 +1,28 @@
+syntax = "proto3";
+package micro_traffic_sim; 
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+import "session.proto";
+import "cell.proto";
+import "trip.proto";
+import "step.proto";
+import "tls.proto";
+import "conflict_zones.proto";
+
+service Service {
+    // Create a new computation session
+    rpc NewSession (SessionReq) returns (NewSessionResponse) {}
+    // Get session info
+    rpc InfoSession (UUIDv4) returns (InfoSessionResponse) {}
+    // Set grid cell data for the given session (bidirectional streaming)
+    rpc PushSessionGrid (stream SessionGrid) returns (stream SessionGridResponse) {}
+    // Set trip data for the given session (bidirectional streaming)
+    rpc PushSessionTrip (stream SessionTrip) returns (stream SessionTripResponse) {}
+    // Run one simulation step for the given session (bidirectional streaming)
+    rpc SimulationStepSession (stream SessionStep) returns (stream SessionStepResponse) {}
+    // Set traffic light data for the given session (bidirectional streaming)
+    rpc PushSessionTLS (stream SessionTLS) returns (stream SessionTLSResponse) {}
+    // Set conflict zones for the given session (bidirectional streaming)
+    rpc PushSessionConflictZones (stream SessionConflictZones) returns (stream SessionConflictZonesResponse) {}
+}

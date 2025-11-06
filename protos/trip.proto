@@ -1,0 +1,78 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+import "step.proto"; // for AgentType enum
+
+// Trip generation pattern, aligned with Rust computation core `TripType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/trips/trip/enum.TripType.html
+enum TripType {
+    // Default uninitialized state
+    TRIP_TYPE_UNDEFINED = 0;
+    // Generate vehicles at regular intervals (use time field)
+    TRIP_TYPE_CONSTANT = 1;
+    // Generate vehicles probabilistically each time step (use probability field)
+    TRIP_TYPE_RANDOM = 2;
+}
+
+// Behaviour strategy, aligned with Rust computation core `BehaviourType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/behaviour/enum.BehaviourType.html
+enum BehaviourType {
+    // Undefined behaviour type.
+    BEHAVIOUR_TYPE_UNDEFINED = 0;
+    // Movement is prohibited due to external factors (e.g., block, broken vehicle, etc.).
+    BEHAVIOUR_TYPE_BLOCK = 1;
+    // Agents minimizing travel time.
+    BEHAVIOUR_TYPE_AGGRESSIVE = 2;
+    // Agents who do not always minimize travel time.
+    BEHAVIOUR_TYPE_COOPERATIVE = 3;
+    // Agent speed will be limited with a specified value given by the trip.
+    BEHAVIOUR_TYPE_LIMIT_SPEED_BY_TRIP = 4;
+}
+
+// Trip definition
+message Trip {
+    // Numeric trip identifier
+    int64 id = 1;
+    // Trip type
+    TripType trip_type = 2; 
+    // Start cell
+    int64 from_node = 3;
+    // End cell
+    int64 to_node = 4;
+    // Initial speed
+    int64 initial_speed = 5;
+    // Vehicle generation probability for trip_type = RANDOM (2)
+    double probability = 6;
+    // Agent type
+    AgentType agent_type = 7;
+    // Behavior strategy
+    BehaviourType behaviour_type = 8;
+    // Vehicle generation time for trip_type = STATIC (1)
+    int64 time = 9;
+    // Vehicle generation start time
+    int64 start_time = 10;
+    // Vehicle generation end time
+    int64 end_time = 11;
+    // Bus dwell time at stops for agent_type = BUS (2)
+    int64 relax_time = 12;
+    // Mandatory bus stops to pass for agent_type = BUS (2)
+    repeated int64 transits = 13;
+}
+
+// Trip payload bound to a session
+message SessionTrip {
+    // Session identifier (UUIDv4)
+    UUIDv4 session_id = 1;
+    // Trip data. Maximum number of entities per message is 10000 (server-side limit)
+    repeated Trip data = 2;
+}
+
+// Server response for trip ingest
+message SessionTripResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+}

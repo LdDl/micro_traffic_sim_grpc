@@ -1,0 +1,65 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+
+// Zone type aligned with Rust computation core `ZoneType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/grid/zones/enum.ZoneType.html
+enum ZoneType {
+    ZONE_TYPE_UNDEFINED = 0; // Default uninitialized state
+    ZONE_TYPE_BIRTH = 1; // Vehicles spawn here
+    ZONE_TYPE_DEATH = 2; // Vehicles despawn here
+    ZONE_TYPE_COORDINATION = 3; // Junction/intersection cell requiring conflict resolution
+    ZONE_TYPE_COMMON = 4; // Regular road segment
+    ZONE_TYPE_ISOLATED = 5; // Disconnected cell (reserved)
+    ZONE_TYPE_LANE_FOR_BUS = 6; // Dedicated bus lane (reserved)
+    ZONE_TYPE_TRANSIT = 7; // Transit/relaxation cell (reserved)
+    ZONE_TYPE_CROSSWALK = 8; // Pedestrian crossing area (reserved)
+}
+
+// Cell structure
+message Cell {
+    // Numeric identifier of the cell
+    int64 id = 1;
+    // Geometry of the cell
+    Point geom = 2;
+    // Zone type
+    ZoneType zone_type = 3;
+    // Speed limit. Measured in cells per simulation step.
+    int64 speed_limit = 4;
+    // Left neighbor cell for lane changing
+    int64 left_node = 5;
+    // Forward neighbor cell for straight movement
+    int64 forward_node = 6;
+    // Right neighbor cell for lane changing
+    int64 right_node = 7;
+    // Parent meso-graph link id. Could be used to aggregate micro cells back to meso links.
+    int64 meso_link_id = 8;
+}
+
+// Point geometry (x, y)
+// In case of SRID = 4326 (which could be set for the whole computational session),
+// X refers to longitude, Y refers to latitude.
+message Point {
+    // X coordinate
+    double x = 1;
+    // Y coordinate
+    double y = 2;
+}
+
+// Grid cells payload bound to a session
+message SessionGrid {
+    // Session identifier (UUIDv4)
+    UUIDv4 session_id = 1;
+    // Grid cell data. Maximum number of entities per message is 10000 (server-side limit)
+    repeated Cell data = 2;
+}
+
+// Server response for session grid ingest
+message SessionGridResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+}

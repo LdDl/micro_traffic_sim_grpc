@@ -1,0 +1,79 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+import "cell.proto";
+
+// Agent type aligned with Rust computation core `AgentType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/agents_types/enum.AgentType.html
+enum AgentType {
+    // Undefined agent type.
+    AGENT_TYPE_UNDEFINED = 0;
+    // A car agent
+    AGENT_TYPE_CAR = 1;
+    // A bus agent
+    AGENT_TYPE_BUS = 2;
+    // A taxi agent
+    AGENT_TYPE_TAXI = 3;
+    // A pedestrian agent (is not used anywhere currently - **FUTURE WORKS**).
+    AGENT_TYPE_PEDESTRIAN = 4;
+}
+
+// Run a single simulation step (computation session-bound)
+message SessionStep {
+    // Session identifier (UUIDv4)
+    UUIDv4 session_id = 1;
+}
+
+// Server response for running one simulation step
+message SessionStepResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+    // Simulation step timestamp (tick)
+    int64 timestamp = 3;
+    // Vehicle state data for the current step
+    repeated VehicleState vehicle_data = 4;
+    // Traffic light state data for the current step
+    repeated TLSState tls_data = 5;
+}
+
+// Vehicle state data for single step
+message VehicleState {
+    // Vehicle identifier
+    int64 vehicle_id = 1; 
+    // Vehicle type
+    AgentType vehicle_type = 2;
+    // Vehicle position (point geometry)
+    Point point = 3;
+    // Bearing angle (degrees)
+    double bearing = 4;
+    // Speed. Measured in cells per simulation step.
+    int64 speed = 5;
+    // Current cell id
+    int64 cell = 6;
+    // Intermediate cells (cells traversed when speed > 1)
+    repeated int64 intermediate_cells = 7;
+    // Travel time (lifetime)
+    int64 travel_time = 8;
+    // Trip identifier
+    int64 trip_id = 9;
+}
+
+// Traffic light state data for single step
+message TLSState {
+    // Traffic light identifier
+    int64 id = 1; 
+    // Groups
+    repeated TLGroup groups = 2; 
+}
+
+// Traffic light group state
+message TLGroup {
+    // Group identifier
+    int64 id = 1; 
+    // Signal
+    string signal = 2;
+}

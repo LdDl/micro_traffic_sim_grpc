@@ -1,0 +1,54 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+
+// Winner type for conflict resolution, aligned with Rust computation core `ConflictWinnerType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/conflict_zones/enum.ConflictWinnerType.html
+enum ConflictWinnerType {
+    CONFLICT_WINNER_UNDEFINED = 0; // Default state
+    CONFLICT_WINNER_EQUAL = 1;     // Equal priority (coin flip / tie-break)
+    CONFLICT_WINNER_FIRST = 2;     // First direction has priority
+    CONFLICT_WINNER_SECOND = 3;    // Second direction has priority
+}
+
+// Conflict zone type (reserved for **FUTURE WORKS**), aligned with Rust computation core `ConflictZoneType`
+// https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/conflict_zones/enum.ConflictZoneType.html
+enum ConflictZoneType {
+    CONFLICT_ZONE_TYPE_UNDEFINED = 0;
+}
+
+// Conflict zone structure
+message ConflictZone {
+    // Numeric identifier
+    int64 id = 1; 
+    // Source cell from the first link
+    int64 source_x = 2;
+    // Source cell from the second link
+    int64 source_y = 3;
+    // Target cell for the first link
+    int64 target_x = 4;
+    // Target cell for the second link
+    int64 target_y = 5;
+    // Conflict resolution priority
+    ConflictWinnerType conflict_winner = 6;
+    // Conflict type. Currently unused - **FUTURE WORKS**
+    ConflictZoneType conflict_type = 7;
+}
+
+// Conflict zones payload bound to a session
+message SessionConflictZones {
+    // Session identifier (UUIDv4)
+    UUIDv4 session_id = 1;
+    // Conflict zone data. Maximum number of entities per message is 10000 (server-side limit)
+    repeated ConflictZone data = 2;
+}
+
+// Server response for session conflict zones ingest
+message SessionConflictZonesResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+}

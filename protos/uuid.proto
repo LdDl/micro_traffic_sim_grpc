@@ -1,0 +1,8 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+message UUIDv4 {
+    // Canonical hyphenated UUID v4 string (36 characters)
+    string value = 1;
+}

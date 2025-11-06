@@ -1,0 +1,38 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+
+// Computation session creation request
+message SessionReq {
+    // Spatial reference ID within the session. Default is 0.
+    // In case of 4326 - X refers to longitude, Y refers to latitude.
+    uint32 srid = 1;
+}
+
+// Session description
+message Session {
+    // Session identifier (UUIDv4)
+    UUIDv4 id = 1;
+}
+
+// Server response for new session creation
+message NewSessionResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+    // Session identifier (UUIDv4)
+    UUIDv4 id = 3;
+}
+
+// Server response for session info request
+message InfoSessionResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+    // Session data
+    Session data = 3;
+}

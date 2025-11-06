@@ -1,0 +1,28 @@
+[package]
+name = "micro_traffic_sim"
+version = "0.1.0"
+edition = "2024"
+build = "src/build.rs"
+authors = ["Dmitrii Lopanov <sexykdi@gmail.com>"]
+description = "gRPC interface for microscopic traffic simulation via cellular automata"
+license = "Apache-2.0"
+
+[dependencies]
+tonic = { version = "0.14.2", features = ["transport"] }
+tonic-prost = "0.14.2"
+prost = "0.14.1"
+prost-types = "0.14.1"
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
+tokio-stream = "0.1"
+futures-core = "0.3"
+
+[build-dependencies]
+tonic-prost-build = "0.14.2"
+prost-build = "0.14.1"
+
+[lib]
+name = "micro_traffic_sim"
+path = "src/lib.rs"
+
+[features]
+server = []

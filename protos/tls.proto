@@ -1,0 +1,100 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+
+import "uuid.proto";
+import "cell.proto";
+
+// Signal kind: main or intermediate
+enum SignalKind {
+    // Main signal
+    SIGNAL_MAIN = 0;
+    // Intermediate signal
+    SIGNAL_INTERMEDIATE = 1;
+}
+
+// Traffic light definition
+message TrafficLight {
+    // Numeric identifier
+    int64 id = 1;
+    // Point geometry
+    Point geom = 2;
+    // Set of traffic light groups
+    repeated Group groups = 3;
+    // Set of time marks for groups
+    repeated int64 times = 4;
+    // Signal kinds for groups
+    repeated SignalKind signals_kinds = 5;
+}
+
+// Traffic light group definition
+message Group {
+    // Numeric identifier
+    int64 id = 1;
+    // Human-readable label
+    string label = 2;
+    // Collection of point geometry
+    repeated Point geom = 3;
+    // Collection of cell IDs
+    repeated int64 cells = 4;
+    // Collection of signals
+    repeated string signals = 5;
+    // Movement metadata for the signal group
+    repeated GroupMovementMetadata movements = 6;
+    // Crosswalk length in meters (optional; if set, the group must be pedestrian)
+    double crosswalk_length = 7;
+    // Group type (vehicle or pedestrian)
+    GroupType type = 8;
+}
+
+// Traffic light group type
+enum GroupType {
+    // Unknown type
+    GROUP_TYPE_UNKNOWN = 0;
+    // Vehicle group
+    GROUP_TYPE_VEHICLE = 1;
+    // Pedestrian group
+    GROUP_TYPE_PEDESTRIAN = 2;
+}
+
+// Maneuver direction
+enum MovementDirection {
+    // Unknown direction
+    MOVEMENT_DIRECTION_UNKNOWN = 0;
+    // Left turn
+    MOVEMENT_DIRECTION_LEFT = 1;
+    // Straight ahead
+    MOVEMENT_DIRECTION_FORWARD = 2;
+    // Right turn
+    MOVEMENT_DIRECTION_RIGHT = 3;
+}
+
+// GroupMovementMetadata: statistical info for a traffic light group by movement direction
+message GroupMovementMetadata {
+    // Source cell ID (must be part of the group)
+    int64 source = 1;
+    // Target cell ID
+    int64 target = 2;
+    // Movement direction
+    MovementDirection direction = 3;
+    // True traffic flow (vehicles per hour)
+    double flow = 4;
+    // Turn radius for the maneuver geometry (trajectory)
+    double turn_radius = 5;
+}
+
+// Traffic lights payload bound to a session
+message SessionTLS {
+    // Session identifier (UUIDv4)
+    UUIDv4 session_id = 1;
+    // Traffic light data
+    repeated TrafficLight data = 2;
+}
+
+// Server response for traffic light ingest
+message SessionTLSResponse {
+    // Response code (0 = OK)
+    uint32 code = 1;
+    // Human-readable message
+    string text = 2;
+}

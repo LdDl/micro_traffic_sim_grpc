@@ -1,0 +1,39 @@
+# Multi-stage Dockerfile to build and run the micro_traffic_sim gRPC server
+# Usage:
+#   docker build -f Dockerfile.server -t your-registry/micro-traffic-sim:latest .
+#   docker run --rm -p 50051:50051 your-registry/micro-traffic-sim:latest
+
+# ---- Builder ----
+FROM rust:1.91-bullseye AS builder
+WORKDIR /app
+
+# System deps (protobuf compiler is required by prost-build/tonic-build)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Cache dependency build
+COPY Cargo.toml Cargo.lock ./
+COPY src/build.rs ./src/build.rs
+RUN mkdir -p src && echo "fn main(){}" > src/lib.rs && \
+    cargo fetch && \
+    cargo build --release --features server || true
+
+# Copy sources
+COPY src ./src
+COPY protos ./protos
+
+# Build release binary with the 'server' feature
+RUN cargo build --release --features server
+
+# ---- Runtime ----
+FROM debian:bookworm-slim AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/target/release/micro_traffic_sim /usr/local/bin/micro_traffic_sim
+
+EXPOSE 50051
+ENTRYPOINT ["/usr/local/bin/micro_traffic_sim"]
