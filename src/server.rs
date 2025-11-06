@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use tokio::time::{sleep, Duration};
 use futures_core::Stream;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -82,15 +82,30 @@ impl pb::service_server::Service for SimService {
     }
 }
 
+fn spawn_purge_task(sessions: Arc<Mutex<SessionsStorage>>) {
+    tokio::spawn(async move {
+        let interval = Duration::from_secs(30); // keep in sync with with_purge_every
+        loop {
+            sleep(interval).await;
+            if let Ok(mut guard) = sessions.lock() {
+                guard.purge_expired();
+            }
+        }
+    });
+}
+
 pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = "0.0.0.0:50051".parse()?;
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
-        .with_session_exp_time(Duration::from_secs(300))
+        .with_session_exp_time(Duration::from_secs(4 * 60))
         .with_purge_every(Duration::from_secs(30))
-        .with_storage_verbose(VerboseLevel::None);
+        .with_storage_verbose(VerboseLevel::Main);
+    let sessions = Arc::new(Mutex::new(store));
+    spawn_purge_task(sessions.clone());
+
     let svc = pb::service_server::ServiceServer::new(SimService {
-        sessions: Arc::new(Mutex::new(store)),
+        sessions: sessions.clone(),
     });
 
     println!("Starting micro_traffic_sim gRPC server on {}", addr);
