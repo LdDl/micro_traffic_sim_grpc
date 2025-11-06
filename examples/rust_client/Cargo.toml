@@ -1,0 +1,11 @@
+[package]
+name = "micro_traffic_sim_rust_client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Use the local library;
+# switch to `git = "..."` or `version = "..."` for proper usage of published crate.
+micro_traffic_sim = { path = "../..", default-features = false }
+tonic = { version = "0.14.2", features = ["transport"] }
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
