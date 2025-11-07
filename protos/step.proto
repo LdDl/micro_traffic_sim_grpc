@@ -1,6 +1,6 @@
 syntax = "proto3";
 package micro_traffic_sim;
-option go_package = "github.com/LdDl/micro_traffic_sim_grpc/protos;protos";
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtraffic";
 
 import "uuid.proto";
 import "cell.proto";

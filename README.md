@@ -9,7 +9,14 @@ This crate exposes the gRPC API for the micro traffic simulation via cellular au
     - [Build and run locally](#build-and-run-locally)
     - [Pre-built image from registry](#pre-built-image-from-registry)
 - [Pre-built binaries from GitHub releases page](#pre-built-binaries-from-github-releases-page)
+- [Usage](#usage)
+    - [Run server locally](#run-server-locally)
+    - [Rust client to micro_traffic_sim gRPC server](#rust-client-to-micro_traffic_sim-grpc-server)
+    - [Golang client to micro_traffic_sim gRPC server](#golang-client-to-micro_traffic_sim-grpc-server)
+    - [Python client to micro_traffic_sim gRPC server](#python-client-to-micro_traffic_sim-grpc-server)
 - [Client code generation](#client-code-generation)
+    - [Golang](#golang)
+    - [Python](#python)
 
 ## Prerequisites for building from source
 
@@ -56,6 +63,55 @@ The Docker image is built with a multi-stage process (Rust builder + slim runtim
 
 @todo
 
+## Usage
+
+### Run server locally
+
+E.g. we can run the server in debug mode with:
+
+```sh
+cargo run --features server --bin micro_traffic_sim
+```
+
+### Rust client to micro_traffic_sim gRPC server
+
+Here more details: [examples/rust_client/README.md](./examples/rust_client/README.md)
+
+```sh
+export MT_SIM_ADDR=127.0.0.1:50051
+cargo run --example rust_client   
+```
+
+### Golang client to micro_traffic_sim gRPC server
+
+Here more details: [clients/go/cmd/example/README.md](./clients/go/cmd/example/README.md)
+
+```sh
+export MT_SIM_ADDR=127.0.0.1:50051
+# from repository root
+cd ./clients/go
+go run ./cmd/example/main.go
+```
+
+### Python client to micro_traffic_sim gRPC server
+
+@todo
+
 ## Client code generation
+
+This section describes how I've used to generate client code for different languages from the proto files.
+
+### Golang
+Client code generation for Golang is done via [scripts/gen_go.sh](./scripts/gen_go.sh). It requires `protoc` and `protoc-gen-go` to be installed and available on PATH.
+```sh
+chmod +x ./scripts/gen_go.sh
+./scripts/gen_go.sh clients/go
+cd ./clients/go
+go mod init github.com/LdDl/micro_traffic_sim_grpc/clients/go
+go mod tidy
+cd -
+```
+
+### Python
 
 @todo
