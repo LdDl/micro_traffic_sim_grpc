@@ -1,7 +1,14 @@
 # Multi-stage Dockerfile to build and run the micro_traffic_sim gRPC server
-# Usage:
+#
+# Build:
 # docker build -f Dockerfile.server -t micro-traffic-sim-server:latest .
+#
+# Run:
 # docker run --rm -it --name micro-traffic-sim-server -p 50051:50051 micro-traffic-sim-server:latest
+#
+# Push to GitHub Container Registry:
+# docker tag micro-traffic-sim-server:latest ghcr.io/dimahkiin/micro-traffic-sim-server:latest
+# docker push ghcr.io/dimahkiin/micro-traffic-sim-server:latest
 
 # Builder
 FROM rust:1.91-alpine AS builder
@@ -25,6 +32,9 @@ RUN cargo build --release --features server && \
 
 # Runtime
 FROM scratch
+LABEL org.opencontainers.image.source="https://github.com/LdDl/micro_traffic_sim_grpc"
+LABEL org.opencontainers.image.description="Microscopic traffic simulation gRPC server"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 COPY --from=builder /sbin/tini-static /tini
 COPY --from=builder /app/target/release/micro_traffic_sim /micro_traffic_sim
 EXPOSE 50051
