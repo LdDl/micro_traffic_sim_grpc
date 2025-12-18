@@ -7,4 +7,6 @@ scripts/gen_python.sh
 # Example output files
 examples/rust_client/output.txt
 examples/rust_client/output.gif
+clients/go/cmd/example/output.txt
+clients/go/cmd/example/output.gif
 *.dat
