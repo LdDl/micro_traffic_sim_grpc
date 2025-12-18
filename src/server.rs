@@ -109,7 +109,13 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     println!("Starting micro_traffic_sim gRPC server on {}", addr);
-    Server::builder().add_service(svc).serve(addr).await?;
+    Server::builder()
+        .add_service(svc)
+        .serve_with_shutdown(addr, async {
+            tokio::signal::ctrl_c().await.ok();
+            println!("\nShutting down gRPC server...");
+        })
+        .await?;
     Ok(())
 }
 
