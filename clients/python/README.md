@@ -1,4 +1,4 @@
-# Python Client for micro_traffic_sim gRPC Server
+# Python client for micro_traffic_sim gRPC Server
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Typing: Typed](https://img.shields.io/badge/typing-typed-green.svg)](https://peps.python.org/pep-0561/)
@@ -36,9 +36,9 @@ session_id = response.id.value
 
 ## Documentation
 
-- **Full Example**: See [examples/](examples/) for a complete simulation workflow
+- **Full example**: See [examples/](https://github.com/LdDl/micro_traffic_sim_grpc/tree/master/clients/python/examples) for a complete simulation workflow
 
-## Running the Example
+## Running the example
 
 1. Start the gRPC server:
 ```bash

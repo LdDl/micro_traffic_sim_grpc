@@ -1,6 +1,6 @@
-# Rust client example for micro_traffic_sim gRPC Server
+# Python Client Example
 
-This example demonstrates a complete traffic simulation workflow using the Rust gRPC client.
+This example demonstrates a complete traffic simulation workflow using the Python gRPC client.
 
 ## Prerequisites
 
@@ -14,25 +14,26 @@ cargo run --features server --bin micro_traffic_sim
 export MT_SIM_ADDR=127.0.0.1:50051
 ```
 
-## Run the example
+## Run the Example
 
 From the repository root:
 
 ```sh
-cargo run --example rust_client > examples/rust_client/output.txt
+source clients/python/.venv/bin/activate
+python clients/python/examples/main.py > clients/python/examples/output.txt
 ```
 
-## Generate visualization
+## Generate Visualization
 
 After running the example, generate an animated GIF with gnuplot:
 
 ```sh
-gnuplot examples/rust_client/plot_anim.gnuplot
+gnuplot clients/python/examples/plot_anim.gnuplot
 ```
 
-This creates `examples/rust_client/output.gif`.
+This creates `clients/python/examples/output.gif`.
 
-## What the example does
+## What the Example Does
 
 1. Creates a new simulation session
 2. Pushes a grid of 30 cells forming 3 intersecting roads
@@ -42,16 +43,3 @@ This creates `examples/rust_client/output.gif`.
 6. Runs 50 simulation steps and outputs vehicle/traffic light states
 
 The output format is compatible with the gnuplot script for visualization.
-
-## Using as a library
-
-Add the following to your `Cargo.toml`:
-
-```toml
-[dependencies]
-micro_traffic_sim = "0.0.1"
-tonic = { version = "0.14.2", features = ["transport"] }
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
-```
-
-See the [crate documentation](https://docs.rs/micro_traffic_sim) for API details.
