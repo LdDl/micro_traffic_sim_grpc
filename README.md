@@ -61,7 +61,21 @@ The Docker image is built with a multi-stage process (Rust builder + slim runtim
 
 ### Pre-built image from registry
 
-@todo
+The server image is available from both Docker Hub and GitHub Container Registry.
+
+**Docker Hub:**
+```sh
+docker pull dimahkiin/micro-traffic-sim-server:latest
+docker run --rm -it -p 50051:50051 dimahkiin/micro-traffic-sim-server:latest
+```
+
+**GitHub Container Registry:**
+```sh
+docker pull ghcr.io/lddl/micro-traffic-sim-server:latest
+docker run --rm -it -p 50051:50051 ghcr.io/lddl/micro-traffic-sim-server:latest
+```
+
+Replace `latest` with a specific version tag (e.g., `0.0.1`) for reproducible deployments.
 
 ## Pre-built binaries from GitHub releases page
 

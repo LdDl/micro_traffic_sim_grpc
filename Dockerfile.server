@@ -1,14 +1,22 @@
 # Multi-stage Dockerfile to build and run the micro_traffic_sim gRPC server
 #
 # Build:
-# docker build -f Dockerfile.server -t micro-traffic-sim-server:latest .
+# docker build -f Dockerfile.server -t micro-traffic-sim/server:latest .
 #
 # Run:
-# docker run --rm -it --name micro-traffic-sim-server -p 50051:50051 micro-traffic-sim-server:latest
+# docker run --rm -it --name micro-traffic-sim-server -p 50051:50051 micro-traffic-sim/server:latest
 #
-# Push to GitHub Container Registry:
-# docker tag micro-traffic-sim-server:latest ghcr.io/dimahkiin/micro-traffic-sim-server:latest
-# docker push ghcr.io/dimahkiin/micro-traffic-sim-server:latest
+# Docker Hub
+# docker tag micro-traffic-sim/server:latest dimahkiin/micro-traffic-sim-server:0.0.1
+# docker tag micro-traffic-sim/server:latest dimahkiin/micro-traffic-sim-server:latest
+# docker push dimahkiin/micro-traffic-sim-server:0.0.1
+# docker push dimahkiin/micro-traffic-sim-server:latest
+
+# GitHub Container Registry
+# docker tag micro-traffic-sim/server:latest ghcr.io/lddl/micro-traffic-sim-server:0.0.1
+# docker tag micro-traffic-sim/server:latest ghcr.io/lddl/micro-traffic-sim-server:latest
+# docker push ghcr.io/lddl/micro-traffic-sim-server:0.0.1
+# docker push ghcr.io/lddl/micro-traffic-sim-server:latest
 
 # Builder
 FROM rust:1.91-alpine AS builder
