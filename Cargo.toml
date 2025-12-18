@@ -15,7 +15,7 @@ prost-types = "0.14.1"
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1"
 futures-core = "0.3"
-micro_traffic_sim_core = "0.1.4"
+micro_traffic_sim_core = "0.1.5"
 uuid = { version = "1.18.1", features = ["v4"] }
 
 [build-dependencies]
