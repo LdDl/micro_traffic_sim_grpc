@@ -1,6 +1,10 @@
 # micro_traffic_sim gRPC server
 
-This crate exposes the gRPC API for the micro traffic simulation via cellular automata. It can be used as a Rust library, run as a server binary, and distributed via Docker. Go and Python client stubs can be generated from the same protos.
+[![Crates.io](https://img.shields.io/crates/v/micro_traffic_sim.svg)](https://crates.io/crates/micro_traffic_sim)
+[![Documentation](https://docs.rs/micro_traffic_sim/badge.svg)](https://docs.rs/micro_traffic_sim)
+[![License](https://img.shields.io/crates/l/micro_traffic_sim.svg)](https://github.com/LdDl/micro_traffic_sim_grpc/blob/master/LICENSE)
+
+This crate exposes the gRPC API for the micro traffic simulation via cellular automata. It can be used as a Rust library ([crates.io](https://crates.io/crates/micro_traffic_sim)), run as a server binary, and distributed via Docker. Go and Python client stubs can be generated from the same protos.
 
 ## Table of Contents
 - [Prerequisites for building from source](#prerequisites-for-building-from-source)
@@ -75,7 +79,10 @@ cargo run --features server --bin micro_traffic_sim
 
 ### Rust client to micro_traffic_sim gRPC server
 
-Here more details: [examples/rust_client/README.md](./examples/rust_client/README.md)
+Add the crate to your project: `cargo add micro_traffic_sim`
+
+- [API Documentation (docs.rs)](https://docs.rs/micro_traffic_sim)
+- [Example details](./examples/rust_client/README.md)
 
 ```sh
 export MT_SIM_ADDR=127.0.0.1:50051
