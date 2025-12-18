@@ -95,7 +95,15 @@ go run ./cmd/example/main.go
 
 ### Python client to micro_traffic_sim gRPC server
 
-@todo
+Here more details: [clients/python/README.md](./clients/python/README.md)
+
+```sh
+export MT_SIM_ADDR=127.0.0.1:50051
+# from repository root
+cd ./clients/python
+source .venv/bin/activate
+python examples/main.py
+```
 
 ## Client code generation
 
@@ -114,4 +122,15 @@ cd -
 
 ### Python
 
-@todo
+Client code generation for Python is done via [scripts/gen_python.sh](./scripts/gen_python.sh). The script automatically creates a virtual environment and installs all dependencies.
+
+```sh
+chmod +x ./scripts/gen_python.sh
+./scripts/gen_python.sh
+```
+
+The script:
+1. Creates `.venv` in `clients/python/` (if not exists)
+2. Installs dependencies from `requirements.txt`
+3. Generates `*_pb2.py`, `*_pb2.pyi` (type stubs), and `*_pb2_grpc.py`
+4. Installs the `micro-traffic-sim` package in editable mode

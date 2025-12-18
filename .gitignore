@@ -1,7 +1,6 @@
 target
 gen
 build.log
-scripts/gen_python.sh
 .vscode
 
 # Example output files
@@ -9,4 +8,13 @@ examples/rust_client/output.txt
 examples/rust_client/output.gif
 clients/go/cmd/example/output.txt
 clients/go/cmd/example/output.gif
+clients/python/examples/output.txt
+clients/python/examples/output.gif
 *.dat
+
+# Python
+clients/python/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/

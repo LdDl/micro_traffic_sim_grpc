@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "micro-traffic-sim"
+version = "0.1.0"
+description = "Python gRPC client for microscopic traffic simulation"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Dmitrii Lopanov", email = "sexykdi@gmail.com"}
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+keywords = ["traffic", "simulation", "grpc", "cellular-automata", "transportation"]
+dependencies = [
+    "grpcio>=1.60.0",
+    "protobuf>=4.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "grpcio-tools>=1.60.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/LdDl/micro_traffic_sim_grpc"
+Documentation = "https://github.com/LdDl/micro_traffic_sim_grpc/tree/main/clients/python"
+Repository = "https://github.com/LdDl/micro_traffic_sim_grpc"
+Issues = "https://github.com/LdDl/micro_traffic_sim_grpc/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["micro_traffic_sim*"]
+
+[tool.setuptools.package-data]
+micro_traffic_sim = ["py.typed", "*.pyi"]
