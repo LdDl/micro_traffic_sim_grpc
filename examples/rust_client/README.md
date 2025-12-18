@@ -1,4 +1,4 @@
-# Rust Client Example
+# Rust client example for micro_traffic_sim gRPC Server
 
 This example demonstrates a complete traffic simulation workflow using the Rust gRPC client.
 
@@ -14,7 +14,7 @@ cargo run --features server --bin micro_traffic_sim
 export MT_SIM_ADDR=127.0.0.1:50051
 ```
 
-## Run the Example
+## Run the example
 
 From the repository root:
 
@@ -22,7 +22,7 @@ From the repository root:
 cargo run --example rust_client > examples/rust_client/output.txt
 ```
 
-## Generate Visualization
+## Generate visualization
 
 After running the example, generate an animated GIF with gnuplot:
 
@@ -32,7 +32,7 @@ gnuplot examples/rust_client/plot_anim.gnuplot
 
 This creates `examples/rust_client/output.gif`.
 
-## What the Example Does
+## What the example does
 
 1. Creates a new simulation session
 2. Pushes a grid of 30 cells forming 3 intersecting roads
@@ -43,7 +43,7 @@ This creates `examples/rust_client/output.gif`.
 
 The output format is compatible with the gnuplot script for visualization.
 
-## Using as a Library
+## Using as a library
 
 Add the following to your `Cargo.toml`:
 

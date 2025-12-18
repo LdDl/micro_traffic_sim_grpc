@@ -43,6 +43,8 @@
 //! }
 //! ```
 //!
+//! For a complete working example, see [`examples/rust_client`](https://github.com/LdDl/micro_traffic_sim_grpc/tree/master/examples/rust_client).
+//!
 //! ## Running the Server
 //!
 //! The server binary is included when built with the `server` feature:

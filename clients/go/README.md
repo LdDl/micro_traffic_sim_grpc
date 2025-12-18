@@ -1,4 +1,4 @@
-# Go Client for micro_traffic_sim gRPC Server
+# Go client for micro_traffic_sim gRPC Server
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/LdDl/micro_traffic_sim_grpc/clients/go.svg)](https://pkg.go.dev/github.com/LdDl/micro_traffic_sim_grpc/clients/go)
 
@@ -45,10 +45,10 @@ func main() {
 
 ## Documentation
 
-- **API Reference**: https://pkg.go.dev/github.com/LdDl/micro_traffic_sim_grpc/clients/go
-- **Full Example**: See [cmd/example/](cmd/example/) for a complete simulation workflow
+- **API reference**: https://pkg.go.dev/github.com/LdDl/micro_traffic_sim_grpc/clients/go
+- **Full example**: See [cmd/example/](cmd/example/) for a complete simulation workflow
 
-## Running the Example
+## Running the example
 
 1. Start the gRPC server:
 ```bash
