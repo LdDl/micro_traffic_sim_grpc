@@ -36,7 +36,7 @@ session_id = response.id.value
 
 ## Documentation
 
-- **Full Example**: See [examples/](examples/) for a complete simulation workflow
+- **Full Example**: See [examples/](https://github.com/LdDl/micro_traffic_sim_grpc/tree/master/clients/python/examples) for a complete simulation workflow
 
 ## Running the Example
 
