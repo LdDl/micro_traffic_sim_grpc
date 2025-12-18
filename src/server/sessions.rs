@@ -20,7 +20,7 @@ pub async fn new_session(
     };
 
     let mut session = Session::default(srid);
-    session.set_verbose_level(VerboseLevel::Main);
+    session.set_verbose_level(VerboseLevel::None);
     let sid = session.get_id();
 
     let ttl = Some(Duration::from_secs(4 * 60));
