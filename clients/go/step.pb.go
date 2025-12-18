@@ -231,7 +231,9 @@ type VehicleState struct {
 	// Travel time (lifetime)
 	TravelTime int64 `protobuf:"varint,8,opt,name=travel_time,json=travelTime,proto3" json:"travel_time,omitempty"`
 	// Trip identifier
-	TripId        int64 `protobuf:"varint,9,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	TripId int64 `protobuf:"varint,9,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	// Tail cells (for multi-cell vehicles)
+	TailCells     []int64 `protobuf:"varint,10,rep,packed,name=tail_cells,json=tailCells,proto3" json:"tail_cells,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,6 +329,13 @@ func (x *VehicleState) GetTripId() int64 {
 		return x.TripId
 	}
 	return 0
+}
+
+func (x *VehicleState) GetTailCells() []int64 {
+	if x != nil {
+		return x.TailCells
+	}
+	return nil
 }
 
 // Traffic light state data for single step
@@ -455,7 +464,7 @@ const file_step_proto_rawDesc = "" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1c\n" +
 	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12B\n" +
 	"\fvehicle_data\x18\x04 \x03(\v2\x1f.micro_traffic_sim.VehicleStateR\vvehicleData\x126\n" +
-	"\btls_data\x18\x05 \x03(\v2\x1b.micro_traffic_sim.TLSStateR\atlsData\"\xcb\x02\n" +
+	"\btls_data\x18\x05 \x03(\v2\x1b.micro_traffic_sim.TLSStateR\atlsData\"\xea\x02\n" +
 	"\fVehicleState\x12\x1d\n" +
 	"\n" +
 	"vehicle_id\x18\x01 \x01(\x03R\tvehicleId\x12?\n" +
@@ -467,7 +476,10 @@ const file_step_proto_rawDesc = "" +
 	"\x12intermediate_cells\x18\a \x03(\x03R\x11intermediateCells\x12\x1f\n" +
 	"\vtravel_time\x18\b \x01(\x03R\n" +
 	"travelTime\x12\x17\n" +
-	"\atrip_id\x18\t \x01(\x03R\x06tripId\"N\n" +
+	"\atrip_id\x18\t \x01(\x03R\x06tripId\x12\x1d\n" +
+	"\n" +
+	"tail_cells\x18\n" +
+	" \x03(\x03R\ttailCells\"N\n" +
 	"\bTLSState\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x122\n" +
 	"\x06groups\x18\x02 \x03(\v2\x1a.micro_traffic_sim.TLGroupR\x06groups\"1\n" +

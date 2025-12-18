@@ -60,6 +60,8 @@ message VehicleState {
     int64 travel_time = 8;
     // Trip identifier
     int64 trip_id = 9;
+    // Tail cells (for multi-cell vehicles)
+    repeated int64 tail_cells = 10;
 }
 
 // Traffic light state data for single step
