@@ -76,30 +76,25 @@ pub async fn push_session_grid(
             }
 
             // Get session and SRID
-            let srid = {
-                let guard = match sessions.lock() {
-                    Ok(g) => g,
-                    Err(_) => {
-                        let _ = tx.send(Err(Status::internal("Storage poisoned"))).await;
-                        continue;
-                    }
-                };
+            let srid_result = sessions
+                .lock()
+                .ok()
+                .and_then(|mut guard| guard.with_session_mut(&sid, |session| session.get_world_srid()));
 
-                match guard.get_session(&sid) {
-                    Some(session) => Some(session.get_world_srid()),
-                    None => None,
-                }
-            };
-
-            let srid = match srid {
+            let srid = match srid_result {
                 Some(s) => s,
                 None => {
-                    let _ = tx
-                        .send(Err(Status::not_found(format!(
-                            "Session not found: {}",
-                            session_id
-                        ))))
-                        .await;
+                    // Either lock poisoned or session not found - try to distinguish
+                    if sessions.lock().is_err() {
+                        let _ = tx.send(Err(Status::internal("Storage poisoned"))).await;
+                    } else {
+                        let _ = tx
+                            .send(Err(Status::not_found(format!(
+                                "Session not found: {}",
+                                session_id
+                            ))))
+                            .await;
+                    }
                     continue;
                 }
             };
@@ -117,27 +112,23 @@ pub async fn push_session_grid(
                         .with_left_node(c.left_node)
                         .with_forward_node(c.forward_node)
                         .with_right_node(c.right_node)
-                        .with_meso_link_id(c.meso_link_id as i32)
+                        .with_meso_link(c.meso_link_id)
                         .build()
                 })
                 .collect();
 
             // Add cells to session
-            let add_result = {
-                let mut guard = match sessions.lock() {
-                    Ok(g) => g,
-                    Err(_) => {
-                        let _ = tx.send(Err(Status::internal("Storage poisoned"))).await;
-                        continue;
-                    }
-                };
-
-                guard.with_session_mut(&sid, |session| {
-                    session.add_cells(cells_data);
-                })
-            };
+            let add_result = sessions
+                .lock()
+                .ok()
+                .and_then(|mut guard| {
+                    guard.with_session_mut(&sid, |session| {
+                        session.add_cells(cells_data);
+                    })
+                });
 
             if add_result.is_none() {
+                // Session disappeared between SRID fetch and add - rare but possible
                 let _ = tx
                     .send(Err(Status::not_found(format!(
                         "Session not found: {}",

@@ -96,52 +96,50 @@ pub async fn push_session_trip(
                 return;
             }
 
-            // Get session
-            let mut sessions_guard = sessions.lock().unwrap();
-            let session = match sessions_guard.get_session_mut(&session_uuid) {
-                Some(s) => s,
-                None => {
-                    let _ = tx
-                        .send(Err(Status::not_found(format!(
-                            "Not found session ID: '{}'",
-                            session_id
-                        ))))
-                        .await;
-                    return;
-                }
+            // Get session and add trips (use block scope to ensure lock is dropped before await)
+            let add_result = {
+                let mut sessions_guard = sessions.lock().unwrap();
+                sessions_guard.with_session_mut(&session_uuid, |session| {
+                    // Convert proto trips to core trips and add them
+                    for trip_data in &req.data {
+                        let trip_type = proto_trip_type_to_core(trip_data.trip_type);
+                        let behaviour_type = proto_behaviour_type_to_core(trip_data.behaviour_type);
+                        let agent_type = proto_agent_type_to_core(trip_data.agent_type);
+
+                        // Convert transits vector
+                        let transits: Vec<i64> = trip_data.transits.clone();
+
+                        // Build trip using the builder pattern
+                        let mut trip_builder = Trip::new(trip_data.from_node, trip_data.to_node, trip_type)
+                            .with_id(trip_data.id)
+                            .with_initial_speed(trip_data.initial_speed as i32)
+                            .with_probability(trip_data.probability)
+                            .with_allowed_agent_type(agent_type)
+                            .with_allowed_behaviour_type(behaviour_type)
+                            .with_time(trip_data.time as i32)
+                            .with_start_time(trip_data.start_time as i32)
+                            .with_end_time(trip_data.end_time as i32);
+
+                        // Set transits if any
+                        if !transits.is_empty() {
+                            trip_builder = trip_builder.with_transits_cells(transits, trip_data.relax_time as i32);
+                        }
+
+                        let trip = trip_builder.build();
+                        session.add_trip(trip);
+                    }
+                })
             };
 
-            // Convert proto trips to core trips and add them
-            for trip_data in &req.data {
-                let trip_type = proto_trip_type_to_core(trip_data.trip_type);
-                let behaviour_type = proto_behaviour_type_to_core(trip_data.behaviour_type);
-                let agent_type = proto_agent_type_to_core(trip_data.agent_type);
-
-                // Convert transits vector
-                let transits: Vec<i64> = trip_data.transits.clone();
-
-                // Build trip using the builder pattern
-                let mut trip_builder = Trip::new(trip_data.from_node, trip_data.to_node, trip_type)
-                    .with_id(trip_data.id)
-                    .with_initial_speed(trip_data.initial_speed as i32)
-                    .with_probability(trip_data.probability)
-                    .with_allowed_agent_type(agent_type)
-                    .with_allowed_behaviour_type(behaviour_type)
-                    .with_time(trip_data.time as i32)
-                    .with_start_time(trip_data.start_time as i32)
-                    .with_end_time(trip_data.end_time as i32);
-
-                // Set transits if any
-                if !transits.is_empty() {
-                    trip_builder = trip_builder.with_transits_cells(transits, trip_data.relax_time as i32);
-                }
-
-                let trip = trip_builder.build();
-                session.add_trip(trip);
+            if add_result.is_none() {
+                let _ = tx
+                    .send(Err(Status::not_found(format!(
+                        "Not found session ID: '{}'",
+                        session_id
+                    ))))
+                    .await;
+                return;
             }
-
-            // Drop the lock before sending response
-            drop(sessions_guard);
 
             // Send OK response
             let resp = pb::SessionTripResponse {

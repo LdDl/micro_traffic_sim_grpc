@@ -56,10 +56,15 @@ pub async fn simulation_step_session(
                 }
             };
 
-            // Get session and run step
-            let mut sessions_guard = sessions.lock().unwrap();
-            let session = match sessions_guard.get_session_mut(&session_uuid) {
-                Some(s) => s,
+            // Get session and run step (use block scope to ensure lock is dropped before await)
+            let step_result = {
+                let mut sessions_guard = sessions.lock().unwrap();
+                sessions_guard.with_session_mut(&session_uuid, |session| {
+                    session.step()
+                })
+            };
+
+            let dump = match step_result {
                 None => {
                     let _ = tx
                         .send(Err(Status::not_found(format!(
@@ -69,21 +74,14 @@ pub async fn simulation_step_session(
                         .await;
                     return;
                 }
-            };
-
-            // Run simulation step
-            let dump = match session.step() {
-                Ok(state) => state,
-                Err(e) => {
+                Some(Err(e)) => {
                     let _ = tx
                         .send(Err(Status::aborted(e.to_string())))
                         .await;
                     return;
                 }
+                Some(Ok(state)) => state,
             };
-
-            // Drop the lock before building response
-            drop(sessions_guard);
 
             // Convert vehicle states
             let vehicle_data: Vec<pb::VehicleState> = dump
@@ -94,7 +92,7 @@ pub async fn simulation_step_session(
                     let tail_cells: Vec<i64> = v.tail_cells.clone();
 
                     pb::VehicleState {
-                        vehicle_id: v.id,
+                        vehicle_id: v.id as i64,
                         vehicle_type: core_agent_type_to_proto(v.vehicle_type),
                         speed: v.last_speed as i64,
                         bearing: v.last_angle,

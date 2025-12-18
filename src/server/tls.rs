@@ -58,42 +58,12 @@ pub async fn push_session_tls(
                 continue;
             }
 
-            // Get session
-            let mut sessions_guard = sessions.lock().unwrap();
-            let session = match sessions_guard.get_session_mut(&session_uuid) {
-                Some(s) => s,
-                None => {
-                    let _ = tx
-                        .send(Err(Status::not_found(format!(
-                            "Not found session ID: '{}'",
-                            session_id
-                        ))))
-                        .await;
-                    return;
-                }
-            };
-
-            let srid = session.get_world_srid();
-
-            // Convert proto traffic lights to core traffic lights
+            // Pre-validate all signals first (before acquiring session)
+            // This captures any signal parsing errors early
+            let mut parsed_signals: Vec<Vec<Vec<SignalType>>> = Vec::with_capacity(req.data.len());
             for tl_data in &req.data {
-                // Convert times
-                let times: Vec<i32> = tl_data.times.iter().map(|t| *t as i32).collect();
-
-                // Convert groups
-                let mut groups: Vec<TrafficLightGroup> = Vec::with_capacity(tl_data.groups.len());
+                let mut tl_signals = Vec::with_capacity(tl_data.groups.len());
                 for group_data in &tl_data.groups {
-                    // Convert geometry points
-                    let geometry: Vec<_> = group_data
-                        .geom
-                        .iter()
-                        .map(|p| new_point(p.x, p.y, srid))
-                        .collect();
-
-                    // Convert cell IDs
-                    let cells_ids: Vec<i64> = group_data.cells.clone();
-
-                    // Convert signals
                     let mut signals: Vec<SignalType> = Vec::with_capacity(group_data.signals.len());
                     for (sig_idx, sig_str) in group_data.signals.iter().enumerate() {
                         match SignalType::from_str(sig_str) {
@@ -109,34 +79,74 @@ pub async fn push_session_tls(
                             }
                         }
                     }
-
-                    // Build group
-                    let group = TrafficLightGroup::new(group_data.id)
-                        .with_label(group_data.label.clone())
-                        .with_geometry(geometry)
-                        .with_cells_ids(cells_ids)
-                        .with_signal(signals)
-                        .build();
-
-                    groups.push(group);
+                    tl_signals.push(signals);
                 }
-
-                // Build traffic light
-                let mut tl_builder = TrafficLight::new(tl_data.id)
-                    .with_groups(groups)
-                    .with_phases_times(times);
-
-                // Set coordinates if provided
-                if let Some(geom) = &tl_data.geom {
-                    tl_builder = tl_builder.with_coordinates(new_point(geom.x, geom.y, srid));
-                }
-
-                let tl = tl_builder.build();
-                session.add_traffic_light(tl);
+                parsed_signals.push(tl_signals);
             }
 
-            // Drop the lock before sending response
-            drop(sessions_guard);
+            // Get session and add traffic lights (use block scope to ensure lock is dropped before await)
+            let add_result = {
+                let mut sessions_guard = sessions.lock().unwrap();
+                sessions_guard.with_session_mut(&session_uuid, |session| {
+                    let srid = session.get_world_srid();
+
+                    // Convert proto traffic lights to core traffic lights
+                    for (tl_idx, tl_data) in req.data.iter().enumerate() {
+                        // Convert times
+                        let times: Vec<i32> = tl_data.times.iter().map(|t| *t as i32).collect();
+
+                        // Convert groups
+                        let mut groups: Vec<TrafficLightGroup> = Vec::with_capacity(tl_data.groups.len());
+                        for (group_idx, group_data) in tl_data.groups.iter().enumerate() {
+                            // Convert geometry points
+                            let geometry: Vec<_> = group_data
+                                .geom
+                                .iter()
+                                .map(|p| new_point(p.x, p.y, Some(srid)))
+                                .collect();
+
+                            // Convert cell IDs
+                            let cells_ids: Vec<i64> = group_data.cells.clone();
+
+                            // Use pre-parsed signals
+                            let signals = parsed_signals[tl_idx][group_idx].clone();
+
+                            // Build group
+                            let group = TrafficLightGroup::new(group_data.id)
+                                .with_label(group_data.label.clone())
+                                .with_geometry(geometry)
+                                .with_cells_ids(cells_ids)
+                                .with_signal(signals)
+                                .build();
+
+                            groups.push(group);
+                        }
+
+                        // Build traffic light
+                        let mut tl_builder = TrafficLight::new(tl_data.id)
+                            .with_groups(groups)
+                            .with_phases_times(times);
+
+                        // Set coordinates if provided
+                        if let Some(geom) = &tl_data.geom {
+                            tl_builder = tl_builder.with_coordinates(new_point(geom.x, geom.y, Some(srid)));
+                        }
+
+                        let tl = tl_builder.build();
+                        session.add_traffic_light(tl);
+                    }
+                })
+            };
+
+            if add_result.is_none() {
+                let _ = tx
+                    .send(Err(Status::not_found(format!(
+                        "Not found session ID: '{}'",
+                        session_id
+                    ))))
+                    .await;
+                return;
+            }
 
             // Send OK response
             let resp = pb::SessionTlsResponse {
