@@ -1,48 +1,53 @@
-## Rust client to micro_traffic_sim gRPC server
+# Rust Client Example
 
-## Run server locally
+This example demonstrates a complete traffic simulation workflow using the Rust gRPC client.
 
-To run the server locally, follow the instructions in the [micro_traffic_sim gRPC server README](../../README.md) to build and run the server binary.
+## Prerequisites
 
-E.g. we can run the server in debug mode with:
-
+1. Start the gRPC server:
 ```sh
 cargo run --features server --bin micro_traffic_sim
 ```
 
-After that we can see following in the shell:
-```
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
-    Running `target/debug/micro_traffic_sim`
-Starting micro_traffic_sim gRPC server on 0.0.0.0:50051
-```
-
-## Run client example in Rust
-```
+2. Set the server address (optional, defaults to `127.0.0.1:50051`):
+```sh
 export MT_SIM_ADDR=127.0.0.1:50051
-cargo run --example rust_client
 ```
 
-If everything is working correctly, you should see output similar to:
+## Run the Example
+
+From the repository root:
+
+```sh
+cargo run --example rust_client > examples/rust_client/output.txt
 ```
-New session created:
-  code: 0 text: The operation completed successfully
-  id:   d4f68898-c1b0-4586-88ee-bbe2349cd491
-Info session:
-  code: 0 text: The operation completed successfully
-  id:   d4f68898-c1b0-4586-88ee-bbe2349cd491
+
+## Generate Visualization
+
+After running the example, generate an animated GIF with gnuplot:
+
+```sh
+gnuplot examples/rust_client/plot_anim.gnuplot
 ```
+
+This creates `examples/rust_client/output.gif`.
+
+## What the Example Does
+
+1. Creates a new simulation session
+2. Pushes a grid of 30 cells forming 3 intersecting roads
+3. Configures conflict zones at the intersection
+4. Sets up a traffic light with 2 signal groups
+5. Creates 3 vehicle trip generators (spawning cars, buses, and taxis)
+6. Runs 50 simulation steps and outputs vehicle/traffic light states
+
+The output format is compatible with the gnuplot script for visualization.
 
 ## Cargo.toml
 
-Add the following to your `Cargo.toml` to use the your Rust-based client outside of the examples:
+Add the following to your `Cargo.toml` to use the Rust-based client outside of the examples:
 
 ```toml
-[package]
-name = "micro_traffic_sim_rust_client"
-version = "0.1.0"
-edition = "2024"
-
 [dependencies]
 micro_traffic_sim = { version = "0.1.0" }
 tonic = { version = "0.14.2", features = ["transport"] }

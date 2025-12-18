@@ -1,76 +1,44 @@
-# Go client to micro_traffic_sim gRPC server
+# Go Client Example
 
-## Run server locally
+This example demonstrates a complete traffic simulation workflow using the Go gRPC client.
 
-To run the server locally, follow the instructions in the [micro_traffic_sim gRPC server README](../../README.md) to build and run the server binary.
+## Prerequisites
 
-E.g. run the server in debug mode with:
-
+1. Start the gRPC server:
 ```sh
 cargo run --features server --bin micro_traffic_sim
 ```
 
-After that you should see:
-```
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
-    Running `target/debug/micro_traffic_sim`
-Starting micro_traffic_sim gRPC server on 0.0.0.0:50051
-```
-
-## Run client example in Go
-
+2. Set the server address (optional, defaults to `127.0.0.1:50051`):
 ```sh
 export MT_SIM_ADDR=127.0.0.1:50051
-cd clients/go
-go run ./cmd/example
 ```
 
-Expected output:
-```
-New session created:
-  code: 0 text: The operation completed successfully
-  id:   d4f68898-c1b0-4586-88ee-b// filepath: /home/dimitrii/rust_work/micro_traffic_sim_grpc/clients/go/README.md
-# Go client to micro_traffic_sim gRPC server
+## Run the Example
 
-## Run server locally
-
-To run the server locally, follow the instructions in the [micro_traffic_sim gRPC server README](../../README.md) to build and run the server binary.
-
-E.g. run the server in debug mode with:
+From the repository root:
 
 ```sh
-cargo run --features server --bin micro_traffic_sim
+go run -C clients/go/cmd/example . > clients/go/cmd/example/output.txt
 ```
 
-After that you should see:
-```
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
-    Running `target/debug/micro_traffic_sim`
-Starting micro_traffic_sim gRPC server on 0.0.0.0:50051
-```
+## Generate Visualization
 
-## Run client example in Go
+After running the example, generate an animated GIF with gnuplot:
 
 ```sh
-export MT_SIM_ADDR=127.0.0.1:50051
-cd clients/go
-go run ./cmd/example
+gnuplot clients/go/cmd/example/plot_anim.gnuplot
 ```
 
-If everything is working correctly, you should see output similar to:
-```
-New session created:
-  code: 0 text: The operation completed successfully
-  id:   49f2b649-3f63-4397-a7a3-b7990d5a1d2e
-Info session:
-  code: 0 text: The operation completed successfully
-  id:   49f2b649-3f63-4397-a7a3-b7990d5a1d2e
-```
+This creates `clients/go/cmd/example/output.gif`.
 
-## go.mod
+## What the Example Does
 
-Add the following to your `go.mod` to use the your Golang-based client outside of the examples:
+1. Creates a new simulation session
+2. Pushes a grid of 30 cells forming 3 intersecting roads
+3. Configures conflict zones at the intersection
+4. Sets up a traffic light with 2 signal groups
+5. Creates 3 vehicle trip generators (spawning cars, buses, and taxis)
+6. Runs 50 simulation steps and outputs vehicle/traffic light states
 
-```
-require github.com/LdDl/micro_traffic_sim_grpc/clients/go v0.1.0
-```
+The output format is compatible with the gnuplot script for visualization.
