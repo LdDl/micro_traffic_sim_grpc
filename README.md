@@ -20,7 +20,7 @@ This crate exposes the gRPC API for the micro traffic simulation via cellular au
 
 ## Prerequisites for building from source
 
-- Rust 1.9.0 which is tested with 2024 edition
+- Rust 1.91.0 which is tested with 2024 edition in my case
 - `protoc` available on PATH
 - Optional: `docker` for container builds
 

@@ -2,10 +2,17 @@
 name = "micro_traffic_sim"
 version = "0.0.1"
 edition = "2024"
+rust-version = "1.85"
 build = "src/build.rs"
 authors = ["Dmitrii Lopanov <sexykdi@gmail.com>"]
 description = "gRPC interface for microscopic traffic simulation via cellular automata"
 license = "Apache-2.0"
+repository = "https://github.com/LdDl/micro_traffic_sim_grpc"
+homepage = "https://github.com/LdDl/micro_traffic_sim_grpc"
+documentation = "https://docs.rs/micro_traffic_sim"
+readme = "README.md"
+keywords = ["traffic", "simulation", "grpc", "cellular-automata", "transportation"]
+categories = ["simulation", "science", "api-bindings"]
 
 [dependencies]
 tonic = { version = "0.14.2", features = ["transport"] }
