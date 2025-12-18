@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
@@ -46,6 +47,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Vertical road 2 cells: 20-29 (y=0..9, x=6.5)
 
     let mut cells: Vec<pb::Cell> = Vec::new();
+    // Store cell coordinates for TLS output later
+    let mut cell_coords: HashMap<i64, (f64, f64)> = HashMap::new();
 
     // ZoneType values: Birth=1, Death=2, Common=4
     const ZONE_BIRTH: i32 = 1;
@@ -64,9 +67,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let forward_node = if i < 9 { i + 1 } else { -1 };
         let left_node = if i == 3 { 14 } else if i == 6 { 24 } else { -1 };
 
+        let x = i as f64;
+        let y = 3.5;
         cells.push(pb::Cell {
             id: i,
-            geom: Some(pb::Point { x: i as f64, y: 3.5 }),
+            geom: Some(pb::Point { x, y }),
             zone_type,
             speed_limit: 1,
             left_node,
@@ -74,6 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node: -1,
             meso_link_id: 0,
         });
+        cell_coords.insert(i, (x, y));
     }
 
     // VERTICAL ROAD 1 (cells 10-19, x=3.5)
@@ -89,9 +95,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let forward_node = if i < 9 { cell_id + 1 } else { -1 };
         let right_node = if i == 3 { 4 } else { -1 };
 
+        let x = 3.5;
+        let y = i as f64;
         cells.push(pb::Cell {
             id: cell_id,
-            geom: Some(pb::Point { x: 3.5, y: i as f64 }),
+            geom: Some(pb::Point { x, y }),
             zone_type,
             speed_limit: 1,
             left_node: -1,
@@ -99,6 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node,
             meso_link_id: 0,
         });
+        cell_coords.insert(cell_id, (x, y));
     }
 
     // VERTICAL ROAD 2 (cells 20-29, x=6.5)
@@ -114,9 +123,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let forward_node = if i < 9 { cell_id + 1 } else { -1 };
         let right_node = if i == 3 { 7 } else { -1 };
 
+        let x = 6.5;
+        let y = i as f64;
         cells.push(pb::Cell {
             id: cell_id,
-            geom: Some(pb::Point { x: 6.5, y: i as f64 }),
+            geom: Some(pb::Point { x, y }),
             zone_type,
             speed_limit: 1,
             left_node: -1,
@@ -124,6 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node,
             meso_link_id: 0,
         });
+        cell_coords.insert(cell_id, (x, y));
     }
 
     // Push grid via streaming
@@ -194,6 +206,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         times: vec![5, 5], // 5s green, 5s red
         signals_kinds: vec![],
     }];
+
+    // Store TLS group cells for output later: (tl_id, group_id) -> Vec<cell_id>
+    let mut tls_group_cells: HashMap<(i64, i64), Vec<i64>> = HashMap::new();
+    for tl in &tls {
+        for group in &tl.groups {
+            tls_group_cells.insert((tl.id, group.id), group.cells.clone());
+        }
+    }
 
     let tls_request = pb::SessionTls {
         session_id: Some(pb::UuiDv4 { value: sid.clone() }),
@@ -277,7 +297,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Collect states for printing at the end
     let mut vehicle_states: Vec<(i64, i64, &'static str, i64, f64, String, i64, f64, f64, String, i64)> = Vec::new();
-    let mut tls_states: Vec<(i64, i64, i64, String)> = Vec::new();
+    // TLS states: (step, tl_id, group_id, cell_id, x, y, signal)
+    let mut tls_states: Vec<(i64, i64, i64, i64, f64, f64, String)> = Vec::new();
 
     // Create step requests
     let step_requests: Vec<pb::SessionStep> = (0..steps_num)
@@ -332,10 +353,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
 
-        // Collect TLS states
+        // Collect TLS states (expand to per-cell)
         for tls in &resp.tls_data {
             for group in &tls.groups {
-                tls_states.push((timestamp, tls.id, group.id, group.signal.clone()));
+                // Look up cells for this group
+                if let Some(cells) = tls_group_cells.get(&(tls.id, group.id)) {
+                    for &cell_id in cells {
+                        let (x, y) = cell_coords.get(&cell_id).copied().unwrap_or((0.0, 0.0));
+                        tls_states.push((timestamp, tls.id, group.id, cell_id, x, y, group.signal.clone()));
+                    }
+                }
             }
         }
     }
@@ -350,9 +377,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Print TLS states
-    println!("tl_step;tl_id;group_id;signal");
-    for (step, tl_id, group_id, signal) in &tls_states {
-        println!("{};{};{};{}", step, tl_id, group_id, signal);
+    println!("tl_step;tl_id;group_id;cell_id;x;y;signal");
+    for (step, tl_id, group_id, cell_id, x, y, signal) in &tls_states {
+        println!("{};{};{};{};{:.5};{:.5};{}", step, tl_id, group_id, cell_id, x, y, signal);
     }
 
     println!("\nSimulation complete!");

@@ -28,3 +28,7 @@ path = "src/lib.rs"
 
 [features]
 server = []
+
+[[example]]
+name = "rust_client"
+path = "examples/rust_client/main.rs"
