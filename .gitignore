@@ -3,3 +3,8 @@ gen
 build.log
 scripts/gen_python.sh
 .vscode
+
+# Example output files
+examples/rust_client/output.txt
+examples/rust_client/output.gif
+*.dat

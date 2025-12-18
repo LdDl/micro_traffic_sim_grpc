@@ -47,6 +47,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Vertical road 2 cells: 20-29 (y=0..9, x=6.5)
 
     let mut cells: Vec<pb::Cell> = Vec::new();
+    // Store cell data for gnuplot output
+    // (id, x, y, forward_node, left_node, right_node, zone_type)
+    let mut cell_data: Vec<(i64, f64, f64, i64, i64, i64, i32)> = Vec::new();
     // Store cell coordinates for TLS output later
     let mut cell_coords: HashMap<i64, (f64, f64)> = HashMap::new();
 
@@ -79,6 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node: -1,
             meso_link_id: 0,
         });
+        cell_data.push((i, x, y, forward_node, left_node, -1, zone_type));
         cell_coords.insert(i, (x, y));
     }
 
@@ -107,6 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node,
             meso_link_id: 0,
         });
+        cell_data.push((cell_id, x, y, forward_node, -1, right_node, zone_type));
         cell_coords.insert(cell_id, (x, y));
     }
 
@@ -135,6 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             right_node,
             meso_link_id: 0,
         });
+        cell_data.push((cell_id, x, y, forward_node, -1, right_node, zone_type));
         cell_coords.insert(cell_id, (x, y));
     }
 
@@ -217,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tls_request = pb::SessionTls {
         session_id: Some(pb::UuiDv4 { value: sid.clone() }),
-        data: tls,
+        data: tls.clone(),
     };
     let tls_stream = tokio_stream::once(tls_request);
     let mut tls_response = client.push_session_tls(tls_stream).await?.into_inner();
@@ -290,7 +296,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ==============================================================
-    // STEP 6: RUN SIMULATION
+    // STEP 6: PRINT GRID/TLS METADATA FOR GNUPLOT
+    // ==============================================================
+    // Helper to convert zone_type to string
+    let zone_str = |z: i32| -> &'static str {
+        match z {
+            1 => "birth",
+            2 => "death",
+            3 => "coordination",
+            4 => "common",
+            5 => "isolated",
+            6 => "lane_for_bus",
+            7 => "transit",
+            8 => "crosswalk",
+            _ => "undefined",
+        }
+    };
+
+    // Print TLS positions
+    println!("tl_id;x;y");
+    for tl in &tls {
+        if let Some(geom) = &tl.geom {
+            println!("{};{:.5};{:.5}", tl.id, geom.x, geom.y);
+        }
+    }
+
+    // Print TLS controlled cells
+    println!("tl_id;controlled_cell;x;y");
+    for tl in &tls {
+        for group in &tl.groups {
+            for &cell_id in &group.cells {
+                if let Some(&(x, y)) = cell_coords.get(&cell_id) {
+                    println!("{};{};{:.5};{:.5}", tl.id, cell_id, x, y);
+                }
+            }
+        }
+    }
+
+    // Print grid cells with connections
+    println!("cell_id;x;y;forward_x;forward_y;connection_type;zone");
+    // First print all cells (for gnuplot to show them even without connections)
+    for &(id, x, y, _, _, _, zone) in &cell_data {
+        println!("{};{:.5};{:.5};{:.5};{:.5};cell;{}", id, x, y, x, y, zone_str(zone));
+    }
+    // Then print connections (arrows)
+    for &(id, x, y, fwd, left, right, _) in &cell_data {
+        if fwd != -1 {
+            if let Some(&(fx, fy)) = cell_coords.get(&fwd) {
+                println!("{};{:.5};{:.5};{:.5};{:.5};forward;common", id, x, y, fx, fy);
+            }
+        }
+        if left != -1 {
+            if let Some(&(lx, ly)) = cell_coords.get(&left) {
+                println!("{};{:.5};{:.5};{:.5};{:.5};left;common", id, x, y, lx, ly);
+            }
+        }
+        if right != -1 {
+            if let Some(&(rx, ry)) = cell_coords.get(&right) {
+                println!("{};{:.5};{:.5};{:.5};{:.5};right;common", id, x, y, rx, ry);
+            }
+        }
+    }
+
+    // ==============================================================
+    // STEP 7: RUN SIMULATION
     // ==============================================================
     let steps_num = 50;
     println!("\n=== Running {} simulation steps ===\n", steps_num);
