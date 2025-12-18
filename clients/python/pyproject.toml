@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "micro-traffic-sim"
-version = "0.1.0"
+version = "0.0.1"
 description = "Python gRPC client for microscopic traffic simulation"
 readme = "README.md"
 license = {text = "Apache-2.0"}

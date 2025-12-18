@@ -18,3 +18,4 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+clients/python/dist/
