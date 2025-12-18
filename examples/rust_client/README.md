@@ -43,13 +43,15 @@ This creates `examples/rust_client/output.gif`.
 
 The output format is compatible with the gnuplot script for visualization.
 
-## Cargo.toml
+## Using as a Library
 
-Add the following to your `Cargo.toml` to use the Rust-based client outside of the examples:
+Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-micro_traffic_sim = { version = "0.1.0" }
+micro_traffic_sim = "0.0.1"
 tonic = { version = "0.14.2", features = ["transport"] }
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
 ```
+
+See the [crate documentation](https://docs.rs/micro_traffic_sim) for API details.
