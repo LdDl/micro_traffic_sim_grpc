@@ -7,15 +7,15 @@
 # docker run --rm -it --name micro-traffic-sim-server -p 50051:50051 micro-traffic-sim/server:latest
 #
 # Docker Hub
-# docker tag micro-traffic-sim/server:latest dimahkiin/micro-traffic-sim-server:0.0.1
+# docker tag micro-traffic-sim/server:latest dimahkiin/micro-traffic-sim-server:0.1.0
 # docker tag micro-traffic-sim/server:latest dimahkiin/micro-traffic-sim-server:latest
-# docker push dimahkiin/micro-traffic-sim-server:0.0.1
+# docker push dimahkiin/micro-traffic-sim-server:0.1.0
 # docker push dimahkiin/micro-traffic-sim-server:latest
 
 # GitHub Container Registry
-# docker tag micro-traffic-sim/server:latest ghcr.io/lddl/micro-traffic-sim-server:0.0.1
+# docker tag micro-traffic-sim/server:latest ghcr.io/lddl/micro-traffic-sim-server:0.1.0
 # docker tag micro-traffic-sim/server:latest ghcr.io/lddl/micro-traffic-sim-server:latest
-# docker push ghcr.io/lddl/micro-traffic-sim-server:0.0.1
+# docker push ghcr.io/lddl/micro-traffic-sim-server:0.1.0
 # docker push ghcr.io/lddl/micro-traffic-sim-server:latest
 
 # Builder
