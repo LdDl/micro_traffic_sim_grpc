@@ -75,11 +75,33 @@ docker pull ghcr.io/lddl/micro-traffic-sim-server:latest
 docker run --rm -it -p 50051:50051 ghcr.io/lddl/micro-traffic-sim-server:latest
 ```
 
-Replace `latest` with a specific version tag (e.g., `0.0.1`) for reproducible deployments.
+Replace `latest` with a specific version tag (e.g., `0.1.0`) for reproducible deployments.
 
 ## Pre-built binaries from GitHub releases page
 
-@todo
+Download pre-built binaries from the [GitHub Releases page](https://github.com/LdDl/micro_traffic_sim_grpc/releases).
+
+Available builds:
+- **Linux (amd64):** `micro-traffic-sim-server-{version}-linux-amd64.tar.gz`
+- **Windows (amd64):** `micro-traffic-sim-server-{version}-windows-amd64.zip`
+
+**Linux example:**
+```sh
+# Download and extract
+wget https://github.com/LdDl/micro_traffic_sim_grpc/releases/download/v0.1.0/micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
+tar -xzf micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
+
+# Run the server
+./micro_traffic_sim
+```
+
+**Windows example:**
+```powershell
+# Extract the zip file, then run:
+.\micro_traffic_sim.exe
+```
+
+The server listens on `0.0.0.0:50051` by default.
 
 ## Usage
 
@@ -99,7 +121,7 @@ Add the crate to your project: `cargo add micro_traffic_sim`
 - [Example details](./examples/rust_client/README.md)
 
 ```sh
-export MT_SIM_ADDR=127.0.0.1:50051
+export MT_SIM_ADDR=127.0.1.0:50051
 cargo run --example rust_client   
 ```
 
@@ -108,7 +130,7 @@ cargo run --example rust_client
 Here more details: [clients/go/README.md](./clients/go/README.md)
 
 ```sh
-export MT_SIM_ADDR=127.0.0.1:50051
+export MT_SIM_ADDR=127.0.1.0:50051
 # from repository root
 cd ./clients/go
 go run ./cmd/example/main.go
@@ -119,7 +141,7 @@ go run ./cmd/example/main.go
 Here more details: [clients/python/README.md](./clients/python/README.md)
 
 ```sh
-export MT_SIM_ADDR=127.0.0.1:50051
+export MT_SIM_ADDR=127.0.1.0:50051
 # from repository root
 cd ./clients/python
 source .venv/bin/activate
