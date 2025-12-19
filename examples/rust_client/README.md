@@ -4,7 +4,14 @@ This example demonstrates a complete traffic simulation workflow using the Rust 
 
 ## Prerequisites
 
-1. Start the gRPC server:
+1. Start the gRPC server (choose one option):
+
+**Docker (recommended):**
+```sh
+docker run --rm -p 50051:50051 dimahkiin/micro-traffic-sim-server:latest
+```
+
+**From source:**
 ```sh
 cargo run --features server --bin micro_traffic_sim
 ```

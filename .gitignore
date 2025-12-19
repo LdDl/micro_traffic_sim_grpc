@@ -19,3 +19,6 @@ __pycache__/
 *.pyo
 *.egg-info/
 clients/python/dist/
+
+# Release binaries
+dist/
