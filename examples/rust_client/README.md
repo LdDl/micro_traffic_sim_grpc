@@ -56,7 +56,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-micro_traffic_sim = "0.0.1"
+micro_traffic_sim = "0.1.0"
 tonic = { version = "0.14.2", features = ["transport"] }
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
 ```
