@@ -26,7 +26,7 @@ from . import uuid_pb2 as uuid__pb2
 from . import cell_pb2 as cell__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nstep.proto\x12\x11micro_traffic_sim\x1a\nuuid.proto\x1a\ncell.proto\"<\n\x0bSessionStep\x12-\n\nsession_id\x18\x01 \x01(\x0b\x32\x19.micro_traffic_sim.UUIDv4\"\xaa\x01\n\x13SessionStepResponse\x12\x0c\n\x04\x63ode\x18\x01 \x01(\r\x12\x0c\n\x04text\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\x12\x35\n\x0cvehicle_data\x18\x04 \x03(\x0b\x32\x1f.micro_traffic_sim.VehicleState\x12-\n\x08tls_data\x18\x05 \x03(\x0b\x32\x1b.micro_traffic_sim.TLSState\"\x83\x02\n\x0cVehicleState\x12\x12\n\nvehicle_id\x18\x01 \x01(\x03\x12\x32\n\x0cvehicle_type\x18\x02 \x01(\x0e\x32\x1c.micro_traffic_sim.AgentType\x12\'\n\x05point\x18\x03 \x01(\x0b\x32\x18.micro_traffic_sim.Point\x12\x0f\n\x07\x62\x65\x61ring\x18\x04 \x01(\x01\x12\r\n\x05speed\x18\x05 \x01(\x03\x12\x0c\n\x04\x63\x65ll\x18\x06 \x01(\x03\x12\x1a\n\x12intermediate_cells\x18\x07 \x03(\x03\x12\x13\n\x0btravel_time\x18\x08 \x01(\x03\x12\x0f\n\x07trip_id\x18\t \x01(\x03\x12\x12\n\ntail_cells\x18\n \x03(\x03\"B\n\x08TLSState\x12\n\n\x02id\x18\x01 \x01(\x03\x12*\n\x06groups\x18\x02 \x03(\x0b\x32\x1a.micro_traffic_sim.TLGroup\"%\n\x07TLGroup\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0e\n\x06signal\x18\x02 \x01(\t*}\n\tAgentType\x12\x18\n\x14\x41GENT_TYPE_UNDEFINED\x10\x00\x12\x12\n\x0e\x41GENT_TYPE_CAR\x10\x01\x12\x12\n\x0e\x41GENT_TYPE_BUS\x10\x02\x12\x13\n\x0f\x41GENT_TYPE_TAXI\x10\x03\x12\x19\n\x15\x41GENT_TYPE_PEDESTRIAN\x10\x04\x42@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nstep.proto\x12\x11micro_traffic_sim\x1a\nuuid.proto\x1a\ncell.proto\"<\n\x0bSessionStep\x12-\n\nsession_id\x18\x01 \x01(\x0b\x32\x19.micro_traffic_sim.UUIDv4\"\xaa\x01\n\x13SessionStepResponse\x12\x0c\n\x04\x63ode\x18\x01 \x01(\r\x12\x0c\n\x04text\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\x12\x35\n\x0cvehicle_data\x18\x04 \x03(\x0b\x32\x1f.micro_traffic_sim.VehicleState\x12-\n\x08tls_data\x18\x05 \x03(\x0b\x32\x1b.micro_traffic_sim.TLSState\"\x83\x02\n\x0cVehicleState\x12\x12\n\nvehicle_id\x18\x01 \x01(\x03\x12\x32\n\x0cvehicle_type\x18\x02 \x01(\x0e\x32\x1c.micro_traffic_sim.AgentType\x12\'\n\x05point\x18\x03 \x01(\x0b\x32\x18.micro_traffic_sim.Point\x12\x0f\n\x07\x62\x65\x61ring\x18\x04 \x01(\x01\x12\r\n\x05speed\x18\x05 \x01(\x03\x12\x0c\n\x04\x63\x65ll\x18\x06 \x01(\x03\x12\x1a\n\x12intermediate_cells\x18\x07 \x03(\x03\x12\x13\n\x0btravel_time\x18\x08 \x01(\x03\x12\x0f\n\x07trip_id\x18\t \x01(\x03\x12\x12\n\ntail_cells\x18\n \x03(\x03\"B\n\x08TLSState\x12\n\n\x02id\x18\x01 \x01(\x03\x12*\n\x06groups\x18\x02 \x03(\x0b\x32\x1a.micro_traffic_sim.TLGroup\"%\n\x07TLGroup\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0e\n\x06signal\x18\x02 \x01(\t*\xad\x01\n\tAgentType\x12\x18\n\x14\x41GENT_TYPE_UNDEFINED\x10\x00\x12\x12\n\x0e\x41GENT_TYPE_CAR\x10\x01\x12\x12\n\x0e\x41GENT_TYPE_BUS\x10\x02\x12\x13\n\x0f\x41GENT_TYPE_TAXI\x10\x03\x12\x19\n\x15\x41GENT_TYPE_PEDESTRIAN\x10\x04\x12\x14\n\x10\x41GENT_TYPE_TRUCK\x10\x05\x12\x18\n\x14\x41GENT_TYPE_LARGE_BUS\x10\x06\x42@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,8 +34,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'step_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtraffic'
-  _globals['_AGENTTYPE']._serialized_start=661
-  _globals['_AGENTTYPE']._serialized_end=786
+  _globals['_AGENTTYPE']._serialized_start=662
+  _globals['_AGENTTYPE']._serialized_end=835
   _globals['_SESSIONSTEP']._serialized_start=57
   _globals['_SESSIONSTEP']._serialized_end=117
   _globals['_SESSIONSTEPRESPONSE']._serialized_start=120

@@ -36,6 +36,10 @@ const (
 	AgentType_AGENT_TYPE_TAXI AgentType = 3
 	// A pedestrian agent (is not used anywhere currently - **FUTURE WORKS**).
 	AgentType_AGENT_TYPE_PEDESTRIAN AgentType = 4
+	// A truck agent (e.g., delivery truck, semi-truck).
+	AgentType_AGENT_TYPE_TRUCK AgentType = 5
+	// A large bus agent (e.g., articulated bus).
+	AgentType_AGENT_TYPE_LARGE_BUS AgentType = 6
 )
 
 // Enum value maps for AgentType.
@@ -46,6 +50,8 @@ var (
 		2: "AGENT_TYPE_BUS",
 		3: "AGENT_TYPE_TAXI",
 		4: "AGENT_TYPE_PEDESTRIAN",
+		5: "AGENT_TYPE_TRUCK",
+		6: "AGENT_TYPE_LARGE_BUS",
 	}
 	AgentType_value = map[string]int32{
 		"AGENT_TYPE_UNDEFINED":  0,
@@ -53,6 +59,8 @@ var (
 		"AGENT_TYPE_BUS":        2,
 		"AGENT_TYPE_TAXI":       3,
 		"AGENT_TYPE_PEDESTRIAN": 4,
+		"AGENT_TYPE_TRUCK":      5,
+		"AGENT_TYPE_LARGE_BUS":  6,
 	}
 )
 
@@ -485,13 +493,15 @@ const file_step_proto_rawDesc = "" +
 	"\x06groups\x18\x02 \x03(\v2\x1a.micro_traffic_sim.TLGroupR\x06groups\"1\n" +
 	"\aTLGroup\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
-	"\x06signal\x18\x02 \x01(\tR\x06signal*}\n" +
+	"\x06signal\x18\x02 \x01(\tR\x06signal*\xad\x01\n" +
 	"\tAgentType\x12\x18\n" +
 	"\x14AGENT_TYPE_UNDEFINED\x10\x00\x12\x12\n" +
 	"\x0eAGENT_TYPE_CAR\x10\x01\x12\x12\n" +
 	"\x0eAGENT_TYPE_BUS\x10\x02\x12\x13\n" +
 	"\x0fAGENT_TYPE_TAXI\x10\x03\x12\x19\n" +
-	"\x15AGENT_TYPE_PEDESTRIAN\x10\x04B@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3"
+	"\x15AGENT_TYPE_PEDESTRIAN\x10\x04\x12\x14\n" +
+	"\x10AGENT_TYPE_TRUCK\x10\x05\x12\x18\n" +
+	"\x14AGENT_TYPE_LARGE_BUS\x10\x06B@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3"
 
 var (
 	file_step_proto_rawDescOnce sync.Once

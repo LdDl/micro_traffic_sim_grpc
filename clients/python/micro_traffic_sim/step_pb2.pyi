@@ -16,11 +16,15 @@ class AgentType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     AGENT_TYPE_BUS: _ClassVar[AgentType]
     AGENT_TYPE_TAXI: _ClassVar[AgentType]
     AGENT_TYPE_PEDESTRIAN: _ClassVar[AgentType]
+    AGENT_TYPE_TRUCK: _ClassVar[AgentType]
+    AGENT_TYPE_LARGE_BUS: _ClassVar[AgentType]
 AGENT_TYPE_UNDEFINED: AgentType
 AGENT_TYPE_CAR: AgentType
 AGENT_TYPE_BUS: AgentType
 AGENT_TYPE_TAXI: AgentType
 AGENT_TYPE_PEDESTRIAN: AgentType
+AGENT_TYPE_TRUCK: AgentType
+AGENT_TYPE_LARGE_BUS: AgentType
 
 class SessionStep(_message.Message):
     __slots__ = ("session_id",)
