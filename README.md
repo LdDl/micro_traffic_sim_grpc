@@ -105,7 +105,7 @@ cargo run --example rust_client
 
 ### Golang client to micro_traffic_sim gRPC server
 
-Here more details: [clients/go/cmd/example/README.md](./clients/go/cmd/example/README.md)
+Here more details: [clients/go/README.md](./clients/go/README.md)
 
 ```sh
 export MT_SIM_ADDR=127.0.0.1:50051

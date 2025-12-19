@@ -1,4 +1,4 @@
-# Python Client Example
+# Python client Example
 
 This example demonstrates a complete traffic simulation workflow using the Python gRPC client.
 
@@ -21,7 +21,7 @@ cargo run --features server --bin micro_traffic_sim
 export MT_SIM_ADDR=127.0.0.1:50051
 ```
 
-## Run the Example
+## Run the example
 
 From the repository root:
 
@@ -30,7 +30,7 @@ source clients/python/.venv/bin/activate
 python clients/python/examples/main.py > clients/python/examples/output.txt
 ```
 
-## Generate Visualization
+## Generate visualization
 
 After running the example, generate an animated GIF with gnuplot:
 
@@ -40,7 +40,7 @@ gnuplot clients/python/examples/plot_anim.gnuplot
 
 This creates `clients/python/examples/output.gif`.
 
-## What the Example Does
+## What the example does
 
 1. Creates a new simulation session
 2. Pushes a grid of 30 cells forming 3 intersecting roads

@@ -1,4 +1,4 @@
-# Go Client Example
+# Go client example
 
 This example demonstrates a complete traffic simulation workflow using the Go gRPC client.
 
@@ -21,7 +21,7 @@ cargo run --features server --bin micro_traffic_sim
 export MT_SIM_ADDR=127.0.0.1:50051
 ```
 
-## Run the Example
+## Run the example
 
 From the repository root:
 
@@ -29,7 +29,7 @@ From the repository root:
 go run -C clients/go/cmd/example . > clients/go/cmd/example/output.txt
 ```
 
-## Generate Visualization
+## Generate visualization
 
 After running the example, generate an animated GIF with gnuplot:
 
@@ -39,7 +39,7 @@ gnuplot clients/go/cmd/example/plot_anim.gnuplot
 
 This creates `clients/go/cmd/example/output.gif`.
 
-## What the Example Does
+## What the example does
 
 1. Creates a new simulation session
 2. Pushes a grid of 30 cells forming 3 intersecting roads
