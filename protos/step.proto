@@ -18,6 +18,10 @@ enum AgentType {
     AGENT_TYPE_TAXI = 3;
     // A pedestrian agent (is not used anywhere currently - **FUTURE WORKS**).
     AGENT_TYPE_PEDESTRIAN = 4;
+    // A truck agent (e.g., delivery truck, semi-truck).
+    AGENT_TYPE_TRUCK = 5;
+    // A large bus agent (e.g., articulated bus).
+    AGENT_TYPE_LARGE_BUS = 6;
 }
 
 // Run a single simulation step (computation session-bound)

@@ -19,6 +19,8 @@ fn core_agent_type_to_proto(agent_type: AgentType) -> i32 {
         AgentType::Bus => 2,
         AgentType::Taxi => 3,
         AgentType::Pedestrian => 4,
+        AgentType::Truck => 5,
+        AgentType::LargeBus => 6,
     }
 }
 
