@@ -40,6 +40,8 @@ fn proto_agent_type_to_core(agent_type: i32) -> AgentType {
         2 => AgentType::Bus,
         3 => AgentType::Taxi,
         4 => AgentType::Pedestrian,
+        5 => AgentType::Truck,
+        6 => AgentType::LargeBus,
         _ => AgentType::Undefined,
     }
 }
