@@ -43,7 +43,7 @@ Notes:
 ```sh
 cargo build --release --features server
 ```
-- Default listen address is `0.0.0.0:50051`.
+- Default listen address is `0.0.0.0:50051`. Override with `MT_SIM_ADDR` environment variable (e.g., `MT_SIM_ADDR=0.0.0.0:25250`).
 
 ## Docker
 
@@ -66,13 +66,13 @@ The server image is available from both Docker Hub and GitHub Container Registry
 **Docker Hub:**
 ```sh
 docker pull dimahkiin/micro-traffic-sim-server:latest
-docker run --rm -it -p 50051:50051 dimahkiin/micro-traffic-sim-server:latest
+docker run --rm -it -p 50051:50051 -e MT_SIM_ADDR=0.0.0.0:50051 dimahkiin/micro-traffic-sim-server:latest
 ```
 
 **GitHub Container Registry:**
 ```sh
 docker pull ghcr.io/lddl/micro-traffic-sim-server:latest
-docker run --rm -it -p 50051:50051 ghcr.io/lddl/micro-traffic-sim-server:latest
+docker run --rm -it -p 50051:50051 -e MT_SIM_ADDR=0.0.0.0:50051 ghcr.io/lddl/micro-traffic-sim-server:latest
 ```
 
 Replace `latest` with a specific version tag (e.g., `0.1.0`) for reproducible deployments.
@@ -101,7 +101,7 @@ tar -xzf micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
 .\micro_traffic_sim.exe
 ```
 
-The server listens on `0.0.0.0:50051` by default.
+The server listens on `0.0.0.0:50051` by default. Override with `MT_SIM_ADDR` environment variable (e.g., `MT_SIM_ADDR=0.0.0.0:25250`).
 
 ## Usage
 
@@ -111,6 +111,11 @@ E.g. we can run the server in debug mode with:
 
 ```sh
 cargo run --features server --bin micro_traffic_sim
+```
+
+To use a custom address:
+```sh
+MT_SIM_ADDR=0.0.0.0:25250 cargo run --features server --bin micro_traffic_sim
 ```
 
 ### Rust client to micro_traffic_sim gRPC server
