@@ -11,6 +11,7 @@ use micro_traffic_sim_core::verbose::VerboseLevel;
 
 pub async fn new_session(
     sessions: Arc<Mutex<SessionsStorage>>,
+    session_verbose: VerboseLevel,
     request: Request<pb::SessionReq>,
 ) -> Result<Response<pb::NewSessionResponse>, Status> {
     let srid = match request.into_inner().srid {
@@ -20,7 +21,7 @@ pub async fn new_session(
     };
 
     let mut session = Session::default(srid);
-    session.set_verbose_level(VerboseLevel::None);
+    session.set_verbose_level(session_verbose);
     let sid = session.get_id();
 
     let ttl = Some(Duration::from_secs(4 * 60));

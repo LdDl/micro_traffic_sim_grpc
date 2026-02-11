@@ -22,6 +22,7 @@ pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Se
 
 struct SimService {
     sessions: Arc<Mutex<SessionsStorage>>,
+    session_verbose: VerboseLevel,
 }
 
 #[tonic::async_trait]
@@ -36,7 +37,7 @@ impl pb::service_server::Service for SimService {
         &self,
         request: Request<pb::SessionReq>,
     ) -> Result<Response<pb::NewSessionResponse>, Status> {
-        sessions::new_session(self.sessions.clone(), request).await
+        sessions::new_session(self.sessions.clone(), self.session_verbose, request).await
     }
 
     async fn info_session(
@@ -99,22 +100,33 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = std::env::var("MT_SIM_ADDR")
         .unwrap_or_else(|_| default_addr.to_string())
         .parse()?;
-    // Configure verbose level from environment (0=None, 1=Main, 2=Additional)
-    let verbose = match std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "1".to_string()).as_str() {
-        "0" => VerboseLevel::None,
-        "2" => VerboseLevel::Additional,
-        _ => VerboseLevel::Main,
+    // Parse verbose level helper
+    let parse_verbose = |val: &str| -> VerboseLevel {
+        match val {
+            "0" => VerboseLevel::None,
+            "2" => VerboseLevel::Additional,
+            _ => VerboseLevel::Main,
+        }
     };
+    // MT_SIM_VERBOSE: per-session simulation logging (steps, conflicts, movement). Default: 0 (None)
+    let sim_verbose = parse_verbose(
+        &std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "0".to_string()),
+    );
+    // MT_SIM_SERVICE_VERBOSE: storage-level logging (session create/expire). Default: 1 (Main)
+    let storage_verbose = parse_verbose(
+        &std::env::var("MT_SIM_SERVICE_VERBOSE").unwrap_or_else(|_| "1".to_string()),
+    );
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
         .with_session_exp_time(Duration::from_secs(4 * 60))
         .with_purge_every(Duration::from_secs(30))
-        .with_storage_verbose(verbose);
+        .with_storage_verbose(storage_verbose);
     let sessions = Arc::new(Mutex::new(store));
     spawn_purge_task(sessions.clone());
 
     let svc = pb::service_server::ServiceServer::new(SimService {
         sessions: sessions.clone(),
+        session_verbose: sim_verbose,
     });
 
     println!("Starting micro_traffic_sim gRPC server on {}", addr);
