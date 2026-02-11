@@ -44,6 +44,7 @@ Notes:
 cargo build --release --features server
 ```
 - Default listen address is `0.0.0.0:50051`. Override with `MT_SIM_ADDR` environment variable (e.g., `MT_SIM_ADDR=0.0.0.0:25250`).
+- Verbose level is controlled by `MT_SIM_VERBOSE` environment variable: `0` = None, `1` = Main (default), `2` = Additional.
 
 ## Docker
 
@@ -101,7 +102,7 @@ tar -xzf micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
 .\micro_traffic_sim.exe
 ```
 
-The server listens on `0.0.0.0:50051` by default. Override with `MT_SIM_ADDR` environment variable (e.g., `MT_SIM_ADDR=0.0.0.0:25250`).
+The server listens on `0.0.0.0:50051` by default. Override with `MT_SIM_ADDR` environment variable (e.g., `MT_SIM_ADDR=0.0.0.0:25250`). Verbose level is controlled by `MT_SIM_VERBOSE` (`0`/`1`/`2`).
 
 ## Usage
 
@@ -113,9 +114,9 @@ E.g. we can run the server in debug mode with:
 cargo run --features server --bin micro_traffic_sim
 ```
 
-To use a custom address:
+To use a custom address and verbose level:
 ```sh
-MT_SIM_ADDR=0.0.0.0:25250 cargo run --features server --bin micro_traffic_sim
+MT_SIM_ADDR=0.0.0.0:25250 MT_SIM_VERBOSE=2 cargo run --features server --bin micro_traffic_sim
 ```
 
 ### Rust client to micro_traffic_sim gRPC server

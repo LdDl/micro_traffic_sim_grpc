@@ -99,11 +99,17 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = std::env::var("MT_SIM_ADDR")
         .unwrap_or_else(|_| default_addr.to_string())
         .parse()?;
+    // Configure verbose level from environment (0=None, 1=Main, 2=Additional)
+    let verbose = match std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "1".to_string()).as_str() {
+        "0" => VerboseLevel::None,
+        "2" => VerboseLevel::Additional,
+        _ => VerboseLevel::Main,
+    };
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
         .with_session_exp_time(Duration::from_secs(4 * 60))
         .with_purge_every(Duration::from_secs(30))
-        .with_storage_verbose(VerboseLevel::Main);
+        .with_storage_verbose(verbose);
     let sessions = Arc::new(Mutex::new(store));
     spawn_purge_task(sessions.clone());
 
