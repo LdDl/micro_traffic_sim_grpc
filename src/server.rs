@@ -95,7 +95,10 @@ fn spawn_purge_task(sessions: Arc<Mutex<SessionsStorage>>) {
 }
 
 pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
-    let addr: SocketAddr = "0.0.0.0:50051".parse()?;
+    let default_addr = "0.0.0.0:50051";
+    let addr: SocketAddr = std::env::var("MT_SIM_ADDR")
+        .unwrap_or_else(|_| default_addr.to_string())
+        .parse()?;
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
         .with_session_exp_time(Duration::from_secs(4 * 60))
