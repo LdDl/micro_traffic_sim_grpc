@@ -431,9 +431,7 @@ dependencies = [
 
 [[package]]
 name = "micro_traffic_sim_core"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "553a298a849c21ba9d978eea2d17655110c1a55f3155604b05fafe2119eee59b"
+version = "0.1.10"
 dependencies = [
  "indexmap",
  "lazy_static",

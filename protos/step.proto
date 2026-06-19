@@ -50,22 +50,20 @@ message VehicleState {
     int64 vehicle_id = 1; 
     // Vehicle type
     AgentType vehicle_type = 2;
-    // Vehicle position (point geometry)
-    Point point = 3;
     // Bearing angle (degrees)
-    double bearing = 4;
+    double bearing = 3;
     // Speed. Measured in cells per simulation step.
-    int64 speed = 5;
+    int64 speed = 4;
     // Current cell id
-    int64 cell = 6;
+    int64 cell = 5;
     // Intermediate cells (cells traversed when speed > 1)
-    repeated int64 intermediate_cells = 7;
+    repeated int64 intermediate_cells = 6;
     // Travel time (lifetime)
-    int64 travel_time = 8;
+    int64 travel_time = 7;
     // Trip identifier
-    int64 trip_id = 9;
+    int64 trip_id = 8;
     // Tail cells (for multi-cell vehicles)
-    repeated int64 tail_cells = 10;
+    repeated int64 tail_cells = 9;
 }
 
 // Traffic light state data for single step
