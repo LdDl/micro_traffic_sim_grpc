@@ -238,10 +238,10 @@ func main() {
 	conflictZones := []*microtraffic.ConflictZone{
 		{
 			Id:             1,
-			SourceX:        3,  // H cell before intersection
-			TargetX:        4,  // H cell after intersection
-			SourceY:        13, // V1 cell before intersection
-			TargetY:        14, // V1 cell after intersection
+			SourceX:        3,                                                      // H cell before intersection
+			TargetX:        4,                                                      // H cell after intersection
+			SourceY:        13,                                                     // V1 cell before intersection
+			TargetY:        14,                                                     // V1 cell after intersection
 			ConflictWinner: microtraffic.ConflictWinnerType_CONFLICT_WINNER_SECOND, // V1 has priority
 			ConflictType:   microtraffic.ConflictZoneType_CONFLICT_ZONE_TYPE_UNDEFINED,
 		},
@@ -500,8 +500,8 @@ func main() {
 		// Collect vehicle states
 		for _, v := range resp.VehicleData {
 			x, y := math.NaN(), math.NaN()
-			if v.Point != nil {
-				x, y = v.Point.X, v.Point.Y
+			if coords, ok := cellCoords[v.Cell]; ok {
+				x, y = coords[0], coords[1]
 			}
 
 			var intermediateCells []string

@@ -3,7 +3,6 @@ package micro_traffic_sim;
 option go_package = "github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtraffic";
 
 import "uuid.proto";
-import "cell.proto";
 
 // Agent type aligned with Rust computation core `AgentType`
 // https://docs.rs/micro_traffic_sim_core/0.1.0/micro_traffic_sim_core/agents_types/enum.AgentType.html
