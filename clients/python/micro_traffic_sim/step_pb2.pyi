@@ -1,5 +1,4 @@
 import uuid_pb2 as _uuid_pb2
-import cell_pb2 as _cell_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -47,10 +46,9 @@ class SessionStepResponse(_message.Message):
     def __init__(self, code: _Optional[int] = ..., text: _Optional[str] = ..., timestamp: _Optional[int] = ..., vehicle_data: _Optional[_Iterable[_Union[VehicleState, _Mapping]]] = ..., tls_data: _Optional[_Iterable[_Union[TLSState, _Mapping]]] = ...) -> None: ...
 
 class VehicleState(_message.Message):
-    __slots__ = ("vehicle_id", "vehicle_type", "point", "bearing", "speed", "cell", "intermediate_cells", "travel_time", "trip_id", "tail_cells")
+    __slots__ = ("vehicle_id", "vehicle_type", "bearing", "speed", "cell", "intermediate_cells", "travel_time", "trip_id", "tail_cells")
     VEHICLE_ID_FIELD_NUMBER: _ClassVar[int]
     VEHICLE_TYPE_FIELD_NUMBER: _ClassVar[int]
-    POINT_FIELD_NUMBER: _ClassVar[int]
     BEARING_FIELD_NUMBER: _ClassVar[int]
     SPEED_FIELD_NUMBER: _ClassVar[int]
     CELL_FIELD_NUMBER: _ClassVar[int]
@@ -60,7 +58,6 @@ class VehicleState(_message.Message):
     TAIL_CELLS_FIELD_NUMBER: _ClassVar[int]
     vehicle_id: int
     vehicle_type: AgentType
-    point: _cell_pb2.Point
     bearing: float
     speed: int
     cell: int
@@ -68,7 +65,7 @@ class VehicleState(_message.Message):
     travel_time: int
     trip_id: int
     tail_cells: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, vehicle_id: _Optional[int] = ..., vehicle_type: _Optional[_Union[AgentType, str]] = ..., point: _Optional[_Union[_cell_pb2.Point, _Mapping]] = ..., bearing: _Optional[float] = ..., speed: _Optional[int] = ..., cell: _Optional[int] = ..., intermediate_cells: _Optional[_Iterable[int]] = ..., travel_time: _Optional[int] = ..., trip_id: _Optional[int] = ..., tail_cells: _Optional[_Iterable[int]] = ...) -> None: ...
+    def __init__(self, vehicle_id: _Optional[int] = ..., vehicle_type: _Optional[_Union[AgentType, str]] = ..., bearing: _Optional[float] = ..., speed: _Optional[int] = ..., cell: _Optional[int] = ..., intermediate_cells: _Optional[_Iterable[int]] = ..., travel_time: _Optional[int] = ..., trip_id: _Optional[int] = ..., tail_cells: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class TLSState(_message.Message):
     __slots__ = ("id", "groups")
