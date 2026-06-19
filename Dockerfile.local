@@ -1,0 +1,34 @@
+# Multi-stage Dockerfile just for local builds
+#
+# Build from parent directory:
+# cd /path/to/root/where/core/and/grpc/are
+# docker build -f micro_traffic_sim_grpc/Dockerfile.local -t micro-traffic-sim-server:local-feature .
+#
+# Run:
+# docker run --rm -it --name micro-traffic-sim-server -p 50051:50051 micro-traffic-sim-server:local-feature
+
+# Builder
+FROM rust:1.91-alpine AS builder
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev protobuf-dev tini-static
+
+# Copy both core and grpc projects
+COPY micro_traffic_sim_core ./micro_traffic_sim_core
+COPY micro_traffic_sim_grpc ./micro_traffic_sim_grpc
+
+# Build grpc service (which now depends on local core)
+WORKDIR /app/micro_traffic_sim_grpc
+RUN cargo build --release --features server && \
+    strip target/release/micro_traffic_sim
+
+# Runtime
+FROM scratch
+LABEL org.opencontainers.image.source="https://github.com/LdDl/micro_traffic_sim_grpc"
+LABEL org.opencontainers.image.description="Microscopic traffic simulation gRPC server (local build)"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+COPY --from=builder /sbin/tini-static /tini
+COPY --from=builder /app/micro_traffic_sim_grpc/target/release/micro_traffic_sim /micro_traffic_sim
+EXPOSE 50051
+ENTRYPOINT ["/tini", "--", "/micro_traffic_sim"]

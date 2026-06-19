@@ -100,10 +100,6 @@ pub async fn simulation_step_session(
                         bearing: v.last_angle,
                         cell: v.last_cell,
                         intermediate_cells,
-                        point: Some(pb::Point {
-                            x: v.last_point[0],
-                            y: v.last_point[1],
-                        }),
                         travel_time: v.travel_time,
                         trip_id: v.trip_id,
                         tail_cells,

@@ -411,8 +411,7 @@ def main() -> None:
 
         # Collect vehicle states
         for v in resp.vehicle_data:
-            x = v.point.x if v.point else math.nan
-            y = v.point.y if v.point else math.nan
+            x, y = cell_coords.get(v.cell, (math.nan, math.nan))
 
             intermediate_cells = ",".join(str(c) for c in v.intermediate_cells)
             tail_cells = ",".join(str(c) for c in v.tail_cells)

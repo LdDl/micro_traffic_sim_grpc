@@ -13,6 +13,9 @@ Update version in the following files (replace `X.Y.Z` with the new version):
 
 # Go
 ./scripts/gen_go.sh
+# Local testing of Go client
+PKG_IMPORT_PATH=github.com/LdDl/micro_traffic_sim_grpc/clients/go \
+  ./scripts/gen_go.sh "$(pwd)/clients/go"
 ```
 
 ## Run tests
