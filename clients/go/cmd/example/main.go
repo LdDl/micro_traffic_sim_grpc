@@ -500,8 +500,8 @@ func main() {
 		// Collect vehicle states
 		for _, v := range resp.VehicleData {
 			x, y := math.NaN(), math.NaN()
-			if v.Point != nil {
-				x, y = v.Point.X, v.Point.Y
+			if coords, ok := cellCoords[v.Cell]; ok {
+				x, y = coords[0], coords[1]
 			}
 
 			var intermediateCells []string
