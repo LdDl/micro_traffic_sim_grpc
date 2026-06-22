@@ -50,6 +50,7 @@ python3 -m grpc_tools.protoc \
   "$PROTO_DIR/trip.proto" \
   "$PROTO_DIR/tls.proto" \
   "$PROTO_DIR/conflict_zones.proto" \
+  "$PROTO_DIR/record.proto" \
   "$PROTO_DIR/uuid.proto"
 
 # Fix imports in generated files (change absolute to relative imports)

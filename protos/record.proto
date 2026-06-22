@@ -1,0 +1,200 @@
+syntax = "proto3";
+package micro_traffic_sim;
+option go_package = "github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtraffic";
+
+import "uuid.proto";
+
+// =============================================================================
+// Headless run + columnar trajectory recording (a recorded per-vehicle, per-tick
+// trajectory stream).
+//
+// RunAndRecord advances an already-loaded session forward AS FAST AS THE ENGINE
+// CAN COMPUTE (no per-tick client round-trip) and streams the per-tick vehicle
+// trajectory back in compact, column-major batches. The intended consumer (the
+// Go bridge) decodes each batch and appends it to a Parquet file plus a
+// tick -> row-group index, then serves windowed / seekable / reversible replay
+// to the UI.
+//
+// The Rust core is NOT modified and does NOT depend on Parquet/Arrow: this RPC
+// packs the per-tick VehicleState dump that Session::step() already returns into
+// the wire blob below. Parquet assembly + compression are the consumer's job.
+//
+// Why a single server-streaming RPC (not one-step-per-request): the live
+// SimulationStepSession path costs one network round-trip per tick, which caps
+// throughput at ~1 tick/RTT regardless of engine speed. RunAndRecord removes
+// that ceiling - the engine free-runs server-side; only batched columnar bytes
+// cross the wire. Recording size is computable up front (no benchmark needed):
+// each vehicle-tick is ~25 bytes fixed (vehicle_id / cell / type / angle / speed /
+// trip + the two list offsets) + 4 bytes per intermediate cell (~ max(0, speed-1):
+// the cells a vehicle crosses per tick when moving faster than one cell/tick) +
+// 4 bytes per tail cell (0 for cars). The whole artifact ~= that * active-vehicles
+// * ticks, with active-vehicles bounded by the cell count. The raw stream
+// compresses several-fold, and packing costs a negligible fraction of step time.
+// =============================================================================
+
+// Request to run a loaded session forward and stream its recorded trajectory.
+// The session must already exist and have at least its grid pushed (via the
+// Push* RPCs).
+message RunAndRecordRequest {
+    // Target session (must already exist and be initialized).
+    UUIDv4 session_id = 1;
+    // Number of ticks to advance from the session's current tick.
+    // 0 = run until the configured maximum / no further active vehicles.
+    uint64 horizon_ticks = 2;
+    // K: number of ticks packed into one RecordBatch. 0 -> server default (~300).
+    // This is a MEMORY <-> COMPRESSION knob, NOT a throughput knob: larger K
+    // buffers more rows before flush (~ K * vehicles * 21 bytes) and compresses
+    // slightly better, while packing cost stays ~flat in K.
+    uint32 batch_ticks = 3;
+    // Optional write-time reduction. LEAVE EMPTY FOR VALIDATION RUNS - any
+    // sampling/subsetting silently degrades a micro recording toward a sparse
+    // aggregate (the macro one-shot model we explicitly do not want here).
+    RecordFilter filter = 4;
+}
+
+// Optional, lossy, write-time data reduction. Empty = full fidelity (every tick,
+// all vehicles).
+message RecordFilter {
+    // Record every Nth tick. 0 or 1 = every tick.
+    uint32 sample_period = 1;
+    // Restrict recorded vehicles to those on these meso links. Empty = all.
+    repeated int64 meso_link_ids = 2;
+}
+
+// Streamed response. Ordering is strict:
+//   1x RunMetadata (first) -> N x RecordBatch (ascending tick order) -> 1x RunSummary (last)
+message RunAndRecordResponse {
+    oneof payload {
+        // Sent exactly once, before any batch.
+        RunMetadata metadata = 1;
+        // Zero or more, in ascending tick order.
+        RecordBatch batch = 2;
+        // Sent exactly once, after the last batch.
+        RunSummary summary = 3;
+    }
+}
+
+// Everything needed to interpret AND reproduce the recording. Persist this
+// alongside the Parquet file.
+//
+// Reproducibility requires pinning BOTH seeds: the core has two independent RNG
+// streams (vehicle spawning vs. per-tick NaSch slowdown / conflict tie-break /
+// reroute), and the per-tick stream is entropy-seeded in production unless
+// MTSC_SEED is set. The recording itself is therefore the canonical replay
+// source; re-running from seeds is best-effort only, and is impossible at all
+// for runs altered by live what-if edits.
+message RunMetadata {
+    // Layout version of the RecordBatch.columns blob (see RECORD BLOB LAYOUT).
+    uint32 format_version = 1;
+    // dt: simulated seconds per tick. Maps tick index -> wall time on the replay
+    // timeline.
+    double tick_seconds = 2;
+    // Vehicle-spawning RNG seed (core SPAWN_SEED).
+    uint64 spawn_seed = 3;
+    // Per-tick stochastic RNG seed (core MTSC_SEED). MUST be pinned for any
+    // re-run to match.
+    uint64 stochastic_seed = 4;
+    // micro_traffic_sim_core version and/or git commit that produced this run.
+    string core_version = 5;
+    // rand crate version: StdRng's byte stream is NOT stable across rand major
+    // versions, so the same seed on a different rand can diverge.
+    string rand_version = 6;
+    // Hash of the inputs (grid + trips + TLS + routing options).
+    string config_hash = 7;
+    // Self-describing column layout, for reader-side validation / forward-compat.
+    ColumnSchema schema = 8;
+}
+
+// Declares the column order and element types of the columnar blob.
+message ColumnSchema {
+    repeated ColumnDef columns = 1;
+}
+
+message ColumnDef {
+    // Column name, e.g. "cell".
+    string name = 1;
+    // Element type, e.g. "u32", "u8", "u16", "i16", or "list<u32>".
+    string type = 2;
+}
+
+// One columnar batch covering ticks [tick_start, tick_start + tick_count).
+//
+// `columns` is an OPAQUE, version-tagged, little-endian binary blob - NOT
+// protobuf - packed column-major. It is kept opaque on purpose: wrapping each
+// scalar as a protobuf field would re-introduce per-field tag/framing overhead
+// for millions of rows. The proto envelope carries only a few routing/progress
+// scalars so the consumer can track progress without decoding the blob; the
+// AUTHORITATIVE copies of version/tick_start/total_rows live inside the blob,
+// which is fully self-describing and can be persisted as-is.
+//
+// -------------------------- RECORD BLOB LAYOUT --------------------------------
+// All integers little-endian. R = total_rows = sum over the K ticks of that
+// tick's active-vehicle count.
+//
+// Header:
+//   u8   version                 // == RunMetadata.format_version; bump on ANY change
+//   u32  tick_start              // first tick (authoritative)
+//   u32  tick_count              // K
+//   u32  total_rows              // R
+//
+// Per-tick index (slice columns by tick without scanning):
+//   u32  rows_per_tick[tick_count]   // vehicles at each tick; prefix-sum = row offsets
+//
+// Fixed-width columns, column-major, each of length R:
+//   u32  vehicle_id[R]
+//   u32  cell[R]                 // head cell id; geometry is resolved client-side from
+//                                //   the static grid - NO coordinates are ever on the wire
+//   u8   agent_type[R]           // 0=Undefined 1=Car 2=Bus 3=Taxi 4=Pedestrian 5=Truck 6=LargeBus
+//   u16  angle_cdeg[R]           // bearing in centidegrees, normalized to [0,360); degrees*100
+//   i16  speed[R]                // cells per tick
+//   u32  trip_id[R]
+//
+// Variable-length columns. Each is an offsets array (cumulative end-offset per
+// row; row i's slice = vals[off[i-1] .. off[i]], off[-1] := 0) plus a flat values
+// array:
+//   u32  ic_off[R]               // intermediate_cells: cells crossed THIS tick when speed>1.
+//   u32  ic_vals[ic_off[R-1]]    //   REQUIRED for cell-level analytics: a vehicle's passage
+//                                //   this tick is attributed to head `cell` PLUS every cell in
+//                                //   ic_vals (otherwise fast vehicles undercount intermediate cells).
+//   u32  tail_off[R]             // tail_cells of multi-cell vehicles (bus / truck / large_bus).
+//   u32  tail_vals[tail_off[R-1]]    // flattened tail cell ids
+//
+// Notes:
+//   * Column-major + cell-id (no geometry) is what makes the blob compress several-fold
+//     (measured, gzip; Parquet dictionary+RLE+zstd is comparable). Compression is
+//     the WRITER's (Go) responsibility - the blob is streamed RAW/uncompressed.
+//   * angle/speed/agent_type are quantized; bump `version` if a wider range or
+//     sub-degree precision is ever required.
+//   * Row order within a tick is the session's vehicle-iteration order and is NOT
+//     guaranteed stable across ticks (vehicles spawn/despawn). Readers MUST key
+//     vehicles by vehicle_id, never by row index.
+//   * VehicleState.travel_time is intentionally NOT stored: it is a pure
+//     per-vehicle age counter (+1 every tick from spawn, including while stopped),
+//     which is high-cardinality (compresses poorly) AND fully derivable. Readers
+//     reconstruct it as (tick - first_recorded_tick) for each vehicle_id - exact
+//     for recordings started at session begin.
+// ------------------------------------------------------------------------------
+message RecordBatch {
+    // First tick in this batch (mirror of the blob header, for cheap progress).
+    uint64 tick_start = 1;
+    // Number of ticks in this batch (K, except possibly the final flushed batch).
+    uint32 tick_count = 2;
+    // Sum of vehicle rows across the batch (mirror, for buffer sizing).
+    uint32 total_rows = 3;
+    // The columnar blob (see RECORD BLOB LAYOUT above).
+    bytes columns = 4;
+}
+
+// Final tallies, sent once after the last batch.
+message RunSummary {
+    // Ticks actually advanced.
+    uint64 total_ticks = 1;
+    // Total vehicle-ticks (rows) recorded.
+    uint64 total_rows = 2;
+    // Total uncompressed bytes of `columns` streamed.
+    uint64 total_bytes = 3;
+    // Cumulative vehicles that reached their destination.
+    int32 vehicles_completed = 4;
+    // Cumulative vehicles lost (despawned in a death zone without arriving).
+    int32 vehicles_lost = 5;
+}

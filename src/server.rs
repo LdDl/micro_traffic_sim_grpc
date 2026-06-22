@@ -16,6 +16,7 @@ mod trip;
 mod step;
 mod tls;
 mod conflict_zones;
+mod record;
 
 // Shared stream type alias for bidirectional streaming
 pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send + 'static>>;
@@ -32,6 +33,7 @@ impl pb::service_server::Service for SimService {
     type SimulationStepSessionStream = BoxStream<pb::SessionStepResponse>;
     type PushSessionTLSStream = BoxStream<pb::SessionTlsResponse>;
     type PushSessionConflictZonesStream = BoxStream<pb::SessionConflictZonesResponse>;
+    type RunAndRecordStream = BoxStream<pb::RunAndRecordResponse>;
 
     async fn new_session(
         &self,
@@ -80,6 +82,13 @@ impl pb::service_server::Service for SimService {
         request: Request<tonic::Streaming<pb::SessionConflictZones>>,
     ) -> Result<Response<Self::PushSessionConflictZonesStream>, Status> {
         conflict_zones::push_session_conflict_zones(self.sessions.clone(), request).await
+    }
+
+    async fn run_and_record(
+        &self,
+        request: Request<pb::RunAndRecordRequest>,
+    ) -> Result<Response<Self::RunAndRecordStream>, Status> {
+        record::run_and_record(self.sessions.clone(), request).await
     }
 }
 
