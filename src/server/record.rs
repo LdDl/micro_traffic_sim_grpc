@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
@@ -9,7 +10,9 @@ use uuid::Uuid;
 use micro_traffic_sim::pb;
 use micro_traffic_sim_core::agents_types::AgentType;
 use micro_traffic_sim_core::simulation::sessions_storage::SessionsStorage;
-use micro_traffic_sim_core::simulation::states::VehicleState;
+use micro_traffic_sim_core::simulation::states::{TrafficLightGroupState, VehicleState};
+use micro_traffic_sim_core::traffic_lights::lights::TrafficLightID;
+use micro_traffic_sim_core::traffic_lights::signals::SignalType;
 
 use super::BoxStream;
 use super::recordings::{RecordingGuard, RecordingHandle, Recordings};
@@ -45,6 +48,10 @@ struct BatchAcc {
     // cumulative end offset into tail_vals, one per row
     tail_off: Vec<u32>,
     tail_vals: Vec<u32>,
+    // (tl_id, group_id) keys, sorted, established once per batch
+    tl_keys: Vec<(u32, u32)>,
+    // per-tick signal codes in tl_keys order, K*G bytes total
+    tl_signals: Vec<u8>,
 }
 
 impl BatchAcc {
@@ -73,9 +80,15 @@ impl BatchAcc {
         self.ic_vals.clear();
         self.tail_off.clear();
         self.tail_vals.clear();
+        self.tl_keys.clear();
+        self.tl_signals.clear();
     }
 
-    fn push_tick(&mut self, vehicles: &[VehicleState]) {
+    fn push_tick(
+        &mut self,
+        vehicles: &[VehicleState],
+        tls: &HashMap<TrafficLightID, Vec<TrafficLightGroupState>>,
+    ) {
         self.rows_per_tick.push(vehicles.len() as u32);
         for v in vehicles {
             self.veh_id.push(v.id as u32);
@@ -93,6 +106,32 @@ impl BatchAcc {
                 self.tail_vals.push(t as u32);
             }
             self.tail_off.push(self.tail_vals.len() as u32);
+        }
+
+        // Traffic-light signals. Establish the (tl_id, group_id) key order once per
+        // batch (TL config is fixed for a run), then push one signal code per key
+        // every tick in that order, so the section is exactly K*G bytes.
+        if self.tl_keys.is_empty() && !tls.is_empty() {
+            let mut keys: Vec<(u32, u32)> = tls
+                .iter()
+                .flat_map(|(tl_id, groups)| {
+                    groups
+                        .iter()
+                        .map(move |g| (*tl_id as u32, g.group_id as u32))
+                })
+                .collect();
+            keys.sort_unstable();
+            self.tl_keys = keys;
+        }
+        let mut sig: HashMap<(u32, u32), u8> = HashMap::new();
+        for (tl_id, groups) in tls {
+            for g in groups {
+                sig.insert((*tl_id as u32, g.group_id as u32), signal_u8(g.last_signal));
+            }
+        }
+        for i in 0..self.tl_keys.len() {
+            let key = self.tl_keys[i];
+            self.tl_signals.push(*sig.get(&key).unwrap_or(&0));
         }
     }
 
@@ -138,6 +177,13 @@ impl BatchAcc {
         for &x in &self.tail_vals {
             buf.extend_from_slice(&x.to_le_bytes());
         }
+        // TL section: group count G, the G (tl_id, group_id) keys, then K*G signal codes.
+        buf.extend_from_slice(&(self.tl_keys.len() as u32).to_le_bytes());
+        for &(tl, gr) in &self.tl_keys {
+            buf.extend_from_slice(&tl.to_le_bytes());
+            buf.extend_from_slice(&gr.to_le_bytes());
+        }
+        buf.extend_from_slice(&self.tl_signals);
         buf
     }
 
@@ -163,6 +209,20 @@ fn agent_type_u8(a: AgentType) -> u8 {
     }
 }
 
+fn signal_u8(s: SignalType) -> u8 {
+    match s {
+        SignalType::Undefined => 0,
+        SignalType::Red => 1,
+        SignalType::Yellow => 2,
+        SignalType::Green => 3,
+        SignalType::GreenPriority => 4,
+        SignalType::GreenRight => 5,
+        SignalType::RedYellow => 6,
+        SignalType::Blinking => 7,
+        SignalType::NoSignal => 8,
+    }
+}
+
 /// Self-describing column layout matching the RECORD BLOB LAYOUT (in order).
 fn column_schema() -> pb::ColumnSchema {
     let col = |name: &str, ty: &str| pb::ColumnDef {
@@ -179,6 +239,23 @@ fn column_schema() -> pb::ColumnSchema {
             col("trip_id", "u32"),
             col("intermediate_cells", "list<u32>"),
             col("tail_cells", "list<u32>"),
+        ],
+    }
+}
+
+/// Self-describing layout of the per-tick traffic-light signal section that
+/// follows the vehicle columns in the blob. Types carry the element shape.
+fn tl_column_schema() -> pb::ColumnSchema {
+    let col = |name: &str, ty: &str| pb::ColumnDef {
+        name: name.to_string(),
+        r#type: ty.to_string(),
+    };
+    pb::ColumnSchema {
+        columns: vec![
+            col("tl_group_count", "u32"),
+            col("tl_id", "u32[tl_group_count]"),
+            col("group_id", "u32[tl_group_count]"),
+            col("signal", "u8[tick_count*tl_group_count]"),
         ],
     }
 }
@@ -286,6 +363,7 @@ pub async fn run_and_record(
             // @todo: hash grid + trips + TLS + routing options
             config_hash: String::new(),
             schema: Some(column_schema()),
+            tl_schema: Some(tl_column_schema()),
         };
         if tx
             .blocking_send(Ok(wrap(pb::run_and_record_response::Payload::Metadata(
@@ -323,7 +401,7 @@ pub async fn run_and_record(
             if batch.is_empty() {
                 batch.tick_start = dump.timestamp as u32;
             }
-            batch.push_tick(&dump.vehicles);
+            batch.push_tick(&dump.vehicles, &dump.tls);
 
             let n = dump.vehicles.len();
             if n > 0 {
@@ -377,9 +455,9 @@ pub async fn run_and_record(
             vehicles_completed: completed,
             vehicles_lost: lost,
         };
-        let _ = tx.blocking_send(Ok(wrap(
-            pb::run_and_record_response::Payload::Summary(summary),
-        )));
+        let _ = tx.blocking_send(Ok(wrap(pb::run_and_record_response::Payload::Summary(
+            summary,
+        ))));
     });
 
     let out: BoxStream<pb::RunAndRecordResponse> = Box::pin(ReceiverStream::new(rx));
@@ -436,13 +514,33 @@ mod tests {
 
         let mut acc = BatchAcc::default();
         acc.tick_start = 7;
+        // one traffic light, two groups, constant across the batch
+        let tls: HashMap<TrafficLightID, Vec<TrafficLightGroupState>> = HashMap::from([(
+            1i64,
+            vec![
+                TrafficLightGroupState {
+                    group_id: 100,
+                    last_signal: SignalType::Green,
+                },
+                TrafficLightGroupState {
+                    group_id: 200,
+                    last_signal: SignalType::Red,
+                },
+            ],
+        )]);
         // tick 1: a car (no ic, no tail) + a bus (ic=[10,11], tail=[20])
-        acc.push_tick(&[
-            veh(1, 100, 0, 0.0, 5, vec![], vec![], AgentType::Car),
-            veh(2, 101, 3, 90.0, 5, vec![10, 11], vec![20], AgentType::Bus),
-        ]);
+        acc.push_tick(
+            &[
+                veh(1, 100, 0, 0.0, 5, vec![], vec![], AgentType::Car),
+                veh(2, 101, 3, 90.0, 5, vec![10, 11], vec![20], AgentType::Bus),
+            ],
+            &tls,
+        );
         // tick 2: just the car
-        acc.push_tick(&[veh(1, 102, 1, 180.0, 5, vec![], vec![], AgentType::Car)]);
+        acc.push_tick(
+            &[veh(1, 102, 1, 180.0, 5, vec![], vec![], AgentType::Car)],
+            &tls,
+        );
 
         assert_eq!(acc.ticks(), 2);
         assert_eq!(acc.rows(), 3);
@@ -532,6 +630,14 @@ mod tests {
         );
         // tail_vals[1]: 20
         assert_eq!(rd_u32(&blob, &mut o), 20);
+
+        // TL section: G=2, keys sorted [(1,100),(1,200)]
+        assert_eq!(rd_u32(&blob, &mut o), 2);
+        assert_eq!([rd_u32(&blob, &mut o), rd_u32(&blob, &mut o)], [1, 100]);
+        assert_eq!([rd_u32(&blob, &mut o), rd_u32(&blob, &mut o)], [1, 200]);
+        // signals[K*G = 2*2]: each tick Green=3, Red=1
+        assert_eq!(&blob[o..o + 4], &[3u8, 1, 3, 1]);
+        o += 4;
 
         // blob is exactly consumed
         assert_eq!(o, blob.len());

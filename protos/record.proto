@@ -101,8 +101,13 @@ message RunMetadata {
     string rand_version = 6;
     // Hash of the inputs (grid + trips + TLS + routing options).
     string config_hash = 7;
-    // Self-describing column layout, for reader-side validation / forward-compat.
+    // Self-describing per-vehicle-row column layout of the blob, for reader-side
+    // validation / forward-compat.
     ColumnSchema schema = 8;
+    // Self-describing layout of the per-tick traffic-light signal section that
+    // follows the vehicle columns in the blob (see RECORD BLOB LAYOUT). Column
+    // types carry the element shape, e.g. "u8[tick_count*tl_group_count]".
+    ColumnSchema tl_schema = 9;
 }
 
 // Declares the column order and element types of the columnar blob.
@@ -158,6 +163,13 @@ message ColumnDef {
 //                                //   ic_vals (otherwise fast vehicles undercount intermediate cells).
 //   u32  tail_off[R]             // tail_cells of multi-cell vehicles (bus / truck / large_bus).
 //   u32  tail_vals[tail_off[R-1]]    // flattened tail cell ids
+//
+// Traffic-light signals. The TL config is fixed for a run, so the group set
+// is constant; the per-tick signal of every group is recorded in a fixed key order:
+//   u32  tl_group_count          // G = number of (tl_id, group_id) pairs
+//   { u32 tl_id; u32 group_id }[G]   // the keys, sorted ascending
+//   u8   signal[tick_count * G]  // tick-major: tick k's G codes at [k*G .. k*G+G)
+//                                //   0=undefined 1=r 2=y 3=g 4=G 5=s 6=u 7=o 8=O
 //
 // Notes:
 //   * Column-major + cell-id (no geometry) is what makes the blob compress several-fold
