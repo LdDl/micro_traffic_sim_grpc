@@ -29,4 +29,8 @@ service Service {
     // Run the session forward headless (no per-tick round-trip) and stream
     // recorded trajectory batches for offline Parquet assembly + windowed replay.
     rpc RunAndRecord (RunAndRecordRequest) returns (stream RunAndRecordResponse) {}
+    // Poll the progress/state of a running recording by session id (out-of-band).
+    rpc RecordingStatus (RecordingStatusRequest) returns (RecordingStatusResponse) {}
+    // Request a running recording to stop (cooperative), by session id (out-of-band).
+    rpc StopRecording (StopRecordingRequest) returns (StopRecordingResponse) {}
 }

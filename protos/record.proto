@@ -198,3 +198,43 @@ message RunSummary {
     // Cumulative vehicles lost (despawned in a death zone without arriving).
     int32 vehicles_lost = 5;
 }
+
+// Observe and control a running recording by session id, out-of-band: both work
+// from any connection, not only the one running the matching RunAndRecord stream.
+
+// State of a recording for a given session id.
+enum RecordingState {
+    RECORDING_STATE_UNSPECIFIED = 0;
+    // No recording is currently running for this session id.
+    RECORDING_STATE_NOT_RUNNING = 1;
+    // A recording is currently running.
+    RECORDING_STATE_RUNNING = 2;
+}
+
+message RecordingStatusRequest {
+    // Session whose recording to query.
+    UUIDv4 session_id = 1;
+}
+
+message RecordingStatusResponse {
+    // Whether a recording is running for this session id.
+    RecordingState state = 1;
+    // Last tick recorded so far (meaningful only when RUNNING).
+    uint64 current_tick = 2;
+    // Vehicle-ticks recorded so far (meaningful only when RUNNING).
+    uint64 rows = 3;
+    // Whether a stop has already been requested for this recording.
+    bool cancel_requested = 4;
+}
+
+message StopRecordingRequest {
+    // Session whose recording to stop.
+    UUIDv4 session_id = 1;
+}
+
+message StopRecordingResponse {
+    // True if a running recording was found and a stop was requested; false if no
+    // recording is running for this session id. The stop is cooperative: the run
+    // finalizes its current batch, sends RunSummary, and ends.
+    bool accepted = 1;
+}
