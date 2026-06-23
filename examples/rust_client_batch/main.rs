@@ -6,6 +6,7 @@ use tonic::transport::Channel;
 
 use micro_traffic_sim::pb;
 use micro_traffic_sim::pb::service_client::ServiceClient;
+use micro_traffic_sim::record::decode_record_batch;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -396,54 +397,9 @@ fn decode_batch(
     tls_group_cells: &HashMap<(i64, i64), Vec<i64>>,
     tls_rows: &mut Vec<String>,
 ) {
-    let rd_u32 = |b: &[u8], o: &mut usize| -> u32 {
-        let v = u32::from_le_bytes(b[*o..*o + 4].try_into().unwrap());
-        *o += 4;
-        v
-    };
-    let rd_u16 = |b: &[u8], o: &mut usize| -> u16 {
-        let v = u16::from_le_bytes(b[*o..*o + 2].try_into().unwrap());
-        *o += 2;
-        v
-    };
-    let rd_i16 = |b: &[u8], o: &mut usize| -> i16 {
-        let v = i16::from_le_bytes(b[*o..*o + 2].try_into().unwrap());
-        *o += 2;
-        v
-    };
+    let responses = decode_record_batch(blob).expect("decode record batch");
 
-    let mut o = 0usize;
-    o += 1;
-    let tick_start = rd_u32(blob, &mut o);
-    let tick_count = rd_u32(blob, &mut o) as usize;
-    let r = rd_u32(blob, &mut o) as usize;
-
-    let rows_per_tick: Vec<usize> = (0..tick_count)
-        .map(|_| rd_u32(blob, &mut o) as usize)
-        .collect();
-    let veh_id: Vec<u32> = (0..r).map(|_| rd_u32(blob, &mut o)).collect();
-    let cell: Vec<u32> = (0..r).map(|_| rd_u32(blob, &mut o)).collect();
-    let agent_type = blob[o..o + r].to_vec();
-    o += r;
-    let angle: Vec<u16> = (0..r).map(|_| rd_u16(blob, &mut o)).collect();
-    let speed: Vec<i16> = (0..r).map(|_| rd_i16(blob, &mut o)).collect();
-    let trip: Vec<u32> = (0..r).map(|_| rd_u32(blob, &mut o)).collect();
-    let ic_off: Vec<usize> = (0..r).map(|_| rd_u32(blob, &mut o) as usize).collect();
-    let ic_total = ic_off.last().copied().unwrap_or(0);
-    let ic_vals: Vec<u32> = (0..ic_total).map(|_| rd_u32(blob, &mut o)).collect();
-    let tail_off: Vec<usize> = (0..r).map(|_| rd_u32(blob, &mut o) as usize).collect();
-    let tail_total = tail_off.last().copied().unwrap_or(0);
-    let tail_vals: Vec<u32> = (0..tail_total).map(|_| rd_u32(blob, &mut o)).collect();
-
-    let g_count = rd_u32(blob, &mut o) as usize;
-    let tl_keys: Vec<(u32, u32)> = (0..g_count)
-        .map(|_| (rd_u32(blob, &mut o), rd_u32(blob, &mut o)))
-        .collect();
-    let tl_signals = blob[o..o + tick_count * g_count].to_vec();
-    o += tick_count * g_count;
-    debug_assert_eq!(o, blob.len());
-
-    let vtype = |t: u8| match t {
+    let vtype = |t: i32| match t {
         1 => "car",
         2 => "bus",
         3 => "taxi",
@@ -452,63 +408,48 @@ fn decode_batch(
         6 => "large_bus",
         _ => "undefined",
     };
-    let slice = |off: &[usize], vals: &[u32], row: usize| -> String {
-        let start = if row == 0 { 0 } else { off[row - 1] };
-        vals[start..off[row]]
+    let join = |cells: &[i64]| -> String {
+        cells
             .iter()
             .map(|v| v.to_string())
             .collect::<Vec<_>>()
             .join(",")
     };
 
-    let mut row = 0usize;
-    for (t, &n) in rows_per_tick.iter().enumerate() {
-        let step = tick_start as usize + t;
-        for _ in 0..n {
-            let c = cell[row] as i64;
-            let (x, y) = cell_coords.get(&c).copied().unwrap_or((f64::NAN, f64::NAN));
+    for resp in &responses {
+        for v in &resp.vehicle_data {
+            let (x, y) = cell_coords
+                .get(&v.cell)
+                .copied()
+                .unwrap_or((f64::NAN, f64::NAN));
             println!(
                 "{};{};{};{};{:.2};{};{};{:.2};{:.2};{};{}",
-                step,
-                veh_id[row],
-                vtype(agent_type[row]),
-                speed[row],
-                angle[row] as f64 / 100.0,
-                slice(&ic_off, &ic_vals, row),
-                c,
+                resp.timestamp,
+                v.vehicle_id,
+                vtype(v.vehicle_type),
+                v.speed,
+                v.bearing,
+                join(&v.intermediate_cells),
+                v.cell,
                 x,
                 y,
-                slice(&tail_off, &tail_vals, row),
-                trip[row],
+                join(&v.tail_cells),
+                v.trip_id,
             );
-            row += 1;
         }
-    }
 
-    let sigstr = |c: u8| match c {
-        1 => "r",
-        2 => "y",
-        3 => "g",
-        4 => "G",
-        5 => "s",
-        6 => "u",
-        7 => "o",
-        8 => "O",
-        _ => "undefined",
-    };
-    for t in 0..tick_count {
-        let step = tick_start as usize + t;
-        for gi in 0..g_count {
-            let tl_id = tl_keys[gi].0 as i64;
-            let group_id = tl_keys[gi].1 as i64;
-            let sig = sigstr(tl_signals[t * g_count + gi]);
-            if let Some(cells) = tls_group_cells.get(&(tl_id, group_id)) {
-                for &cell_id in cells {
-                    if let Some(&(x, y)) = cell_coords.get(&cell_id) {
-                        tls_rows.push(format!(
-                            "{};{};{};{};{:.5};{:.5};{}",
-                            step, tl_id, group_id, cell_id, x, y, sig
-                        ));
+        for tls in &resp.tls_data {
+            let tl_id = tls.id;
+            for group in &tls.groups {
+                let group_id = group.id;
+                if let Some(cells) = tls_group_cells.get(&(tl_id, group_id)) {
+                    for &cell_id in cells {
+                        if let Some(&(x, y)) = cell_coords.get(&cell_id) {
+                            tls_rows.push(format!(
+                                "{};{};{};{};{:.5};{:.5};{}",
+                                resp.timestamp, tl_id, group_id, cell_id, x, y, group.signal
+                            ));
+                        }
                     }
                 }
             }
