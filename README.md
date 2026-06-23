@@ -91,7 +91,7 @@ Available builds:
 **Linux example:**
 ```sh
 # Download and extract
-wget https://github.com/LdDl/micro_traffic_sim_grpc/releases/download/v0.1.0/micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
+wget https://github.com/LdDl/micro_traffic_sim_grpc/releases/download/v0.2.0/micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
 tar -xzf micro-traffic-sim-server-0.1.0-linux-amd64.tar.gz
 
 # Run the server
