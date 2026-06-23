@@ -194,10 +194,10 @@ fn wrap(payload: pb::run_and_record_response::Payload) -> pb::RunAndRecordRespon
 ///
 /// Takes the session OUT of `SessionsStorage` for the duration of the run (so a long
 /// batch run neither holds the global storage lock per tick nor races the TTL purge),
-/// owns it in the spawned task, and drops it on completion - the recording is the
-/// canonical artifact, the spent session is freed. The run is registered in
-/// `recordings` so out-of-band callers can observe progress and request a stop; the
-/// loop checks the cancel flag and the (closed) client stream every tick. A
+/// owns it on a dedicated OS thread (off the async runtime), and drops it on
+/// completion - the recording is the canonical artifact, the spent session is freed.
+/// The run is registered in `recordings` so callers can observe progress and request a
+/// stop; the loop checks the cancel flag and the (closed) client stream every tick. A
 /// `RecordingGuard` deregisters the entry on any exit (completion, stop, error, panic).
 /// Streams RunMetadata first, then one RecordBatch every `batch_ticks` (K) ticks, then
 /// RunSummary last, through a bounded mpsc channel for natural backpressure.
@@ -264,9 +264,13 @@ pub async fn run_and_record(
 
     let (tx, rx) = mpsc::channel::<Result<pb::RunAndRecordResponse, Status>>(16);
 
-    tokio::spawn(async move {
+    // Run the CPU-heavy stepping on a DEDICATED OS thread, OFF the async runtime: a
+    // long (30+ min) run must not hog a tokio worker and starve other clients. The
+    // thread feeds the gRPC stream through the bounded channel; `blocking_send` blocks
+    // the thread (not a worker) when the consumer is slow, giving natural backpressure.
+    std::thread::spawn(move || {
         // Deregisters the recording on ANY exit (completion / stop / error / panic);
-        // the owned `session` is dropped together with this task = immediate cleanup.
+        // the owned `session` is dropped together with this thread = immediate cleanup.
         let _guard = RecordingGuard::new(recordings, session_uuid);
 
         // Metadata, sent exactly once before any batch.
@@ -284,10 +288,9 @@ pub async fn run_and_record(
             schema: Some(column_schema()),
         };
         if tx
-            .send(Ok(wrap(pb::run_and_record_response::Payload::Metadata(
+            .blocking_send(Ok(wrap(pb::run_and_record_response::Payload::Metadata(
                 meta,
             ))))
-            .await
             .is_err()
         {
             return;
@@ -312,7 +315,7 @@ pub async fn run_and_record(
             let dump = match session.step() {
                 Ok(d) => d,
                 Err(e) => {
-                    let _ = tx.send(Err(Status::aborted(e.to_string()))).await;
+                    let _ = tx.blocking_send(Err(Status::aborted(e.to_string())));
                     return;
                 }
             };
@@ -340,8 +343,7 @@ pub async fn run_and_record(
                 let rb = batch.into_proto();
                 total_bytes += rb.columns.len() as u64;
                 if tx
-                    .send(Ok(wrap(pb::run_and_record_response::Payload::Batch(rb))))
-                    .await
+                    .blocking_send(Ok(wrap(pb::run_and_record_response::Payload::Batch(rb))))
                     .is_err()
                 {
                     return;
@@ -360,8 +362,7 @@ pub async fn run_and_record(
             let rb = batch.into_proto();
             total_bytes += rb.columns.len() as u64;
             if tx
-                .send(Ok(wrap(pb::run_and_record_response::Payload::Batch(rb))))
-                .await
+                .blocking_send(Ok(wrap(pb::run_and_record_response::Payload::Batch(rb))))
                 .is_err()
             {
                 return;
@@ -376,11 +377,9 @@ pub async fn run_and_record(
             vehicles_completed: completed,
             vehicles_lost: lost,
         };
-        let _ = tx
-            .send(Ok(wrap(pb::run_and_record_response::Payload::Summary(
-                summary,
-            ))))
-            .await;
+        let _ = tx.blocking_send(Ok(wrap(
+            pb::run_and_record_response::Payload::Summary(summary),
+        )));
     });
 
     let out: BoxStream<pb::RunAndRecordResponse> = Box::pin(ReceiverStream::new(rx));
