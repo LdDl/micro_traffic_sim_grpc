@@ -17,6 +17,7 @@ mod step;
 mod tls;
 mod conflict_zones;
 mod record;
+mod recordings;
 
 // Shared stream type alias for bidirectional streaming
 pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send + 'static>>;
@@ -24,6 +25,7 @@ pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Se
 struct SimService {
     sessions: Arc<Mutex<SessionsStorage>>,
     session_verbose: VerboseLevel,
+    recordings: recordings::Recordings,
 }
 
 #[tonic::async_trait]
@@ -88,7 +90,7 @@ impl pb::service_server::Service for SimService {
         &self,
         request: Request<pb::RunAndRecordRequest>,
     ) -> Result<Response<Self::RunAndRecordStream>, Status> {
-        record::run_and_record(self.sessions.clone(), request).await
+        record::run_and_record(self.sessions.clone(), self.recordings.clone(), request).await
     }
 }
 
@@ -136,6 +138,7 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     let svc = pb::service_server::ServiceServer::new(SimService {
         sessions: sessions.clone(),
         session_verbose: sim_verbose,
+        recordings: recordings::new_registry(),
     });
 
     println!("Starting micro_traffic_sim gRPC server on {}", addr);

@@ -1,3 +1,4 @@
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use tokio::sync::mpsc;
@@ -11,6 +12,7 @@ use micro_traffic_sim_core::simulation::sessions_storage::SessionsStorage;
 use micro_traffic_sim_core::simulation::states::VehicleState;
 
 use super::BoxStream;
+use super::recordings::{RecordingGuard, RecordingHandle, Recordings};
 
 /// Layout version of the RecordBatch.columns blob. See `protos/record.proto`
 /// RECORD BLOB LAYOUT. Bump on ANY change to the blob layout.
@@ -190,14 +192,18 @@ fn wrap(payload: pb::run_and_record_response::Payload) -> pb::RunAndRecordRespon
 /// Headless run + columnar trajectory recording. See `protos/record.proto` for the
 /// wire contract and the RECORD BLOB LAYOUT.
 ///
-/// Advances the session forward with no per-tick client round-trip and streams the
-/// per-tick `VehicleState` dump back as versioned column-major batches: RunMetadata
-/// first, then one RecordBatch every `batch_ticks` (K) ticks, then RunSummary last.
-/// The sessions lock is re-acquired per tick (never held across the whole run nor
-/// across an await), and responses go through a bounded mpsc channel for natural
-/// backpressure so a slow consumer cannot make the producer outrun memory.
+/// Takes the session OUT of `SessionsStorage` for the duration of the run (so a long
+/// batch run neither holds the global storage lock per tick nor races the TTL purge),
+/// owns it in the spawned task, and drops it on completion - the recording is the
+/// canonical artifact, the spent session is freed. The run is registered in
+/// `recordings` so out-of-band callers can observe progress and request a stop; the
+/// loop checks the cancel flag and the (closed) client stream every tick. A
+/// `RecordingGuard` deregisters the entry on any exit (completion, stop, error, panic).
+/// Streams RunMetadata first, then one RecordBatch every `batch_ticks` (K) ticks, then
+/// RunSummary last, through a bounded mpsc channel for natural backpressure.
 pub async fn run_and_record(
     sessions: Arc<Mutex<SessionsStorage>>,
+    recordings: Recordings,
     request: Request<pb::RunAndRecordRequest>,
 ) -> Result<Response<BoxStream<pb::RunAndRecordResponse>>, Status> {
     let req = request.into_inner();
@@ -229,9 +235,40 @@ pub async fn run_and_record(
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0);
 
+    // Take ownership of the session: out of the storage's TTL/lock machinery for the
+    // whole run. Stepping an owned session holds no global storage lock (concurrent
+    // interactive sessions are unaffected) and the TTL purge cannot reap it mid-run.
+    let mut session = {
+        let mut guard = sessions
+            .lock()
+            .map_err(|_| Status::internal("sessions storage lock poisoned"))?;
+        match guard.remove_session(&session_uuid) {
+            Some(s) => s,
+            None => {
+                return Err(Status::not_found(format!(
+                    "Not found session ID: '{}'",
+                    session_id
+                )));
+            }
+        }
+    };
+
+    // Register the control handle so StopRecording / RecordingStatus can reach this run.
+    let handle = Arc::new(RecordingHandle::default());
+    {
+        let mut reg = recordings
+            .lock()
+            .map_err(|_| Status::internal("recordings registry lock poisoned"))?;
+        reg.insert(session_uuid, handle.clone());
+    }
+
     let (tx, rx) = mpsc::channel::<Result<pb::RunAndRecordResponse, Status>>(16);
 
     tokio::spawn(async move {
+        // Deregisters the recording on ANY exit (completion / stop / error / panic);
+        // the owned `session` is dropped together with this task = immediate cleanup.
+        let _guard = RecordingGuard::new(recordings, session_uuid);
+
         // Metadata, sent exactly once before any batch.
         let meta = pb::RunMetadata {
             format_version: RECORD_BATCH_VERSION as u32,
@@ -266,34 +303,18 @@ pub async fn run_and_record(
         let mut seen_any = false;
 
         for _ in 0..max_ticks {
-            // Step under the lock; the guard is fully dropped before any await
-            // (the match yields a Send value, so no MutexGuard crosses an await).
-            let stepped = match sessions.lock() {
-                Ok(mut guard) => Ok(guard.with_session_mut(&session_uuid, |s| s.step())),
-                Err(_) => Err(()),
-            };
+            // Stop promptly on an out-of-band StopRecording (cancel flag) or a
+            // cancelled client stream (receiver dropped).
+            if handle.cancel.load(Ordering::Relaxed) || tx.is_closed() {
+                break;
+            }
 
-            let dump = match stepped {
-                Err(()) => {
-                    let _ = tx
-                        .send(Err(Status::internal("sessions storage lock poisoned")))
-                        .await;
-                    return;
-                }
-                Ok(None) => {
-                    let _ = tx
-                        .send(Err(Status::not_found(format!(
-                            "Not found session ID: '{}'",
-                            session_id
-                        ))))
-                        .await;
-                    return;
-                }
-                Ok(Some(Err(e))) => {
+            let dump = match session.step() {
+                Ok(d) => d,
+                Err(e) => {
                     let _ = tx.send(Err(Status::aborted(e.to_string()))).await;
                     return;
                 }
-                Ok(Some(Ok(d))) => d,
             };
 
             if batch.is_empty() {
@@ -309,6 +330,10 @@ pub async fn run_and_record(
             total_rows += n as u64;
             completed = dump.vehicles_completed;
             lost = dump.vehicles_lost;
+            handle
+                .progress_tick
+                .store(dump.timestamp as u64, Ordering::Relaxed);
+            handle.rows.store(total_rows, Ordering::Relaxed);
 
             // Flush a full batch.
             if batch.ticks() as usize >= batch_ticks {
@@ -378,7 +403,6 @@ mod tests {
     ) -> VehicleState {
         VehicleState {
             occupied_points: vec![],
-            last_point: [0.0, 0.0],
             last_cell: cell,
             tail_cells: tail,
             last_intermediate_cells: ic,
