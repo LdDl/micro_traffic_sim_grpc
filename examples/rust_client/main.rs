@@ -385,11 +385,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Collect vehicle states
         for v in &resp.vehicle_data {
-            let (x, y) = if let Some(pt) = &v.point {
-                (pt.x, pt.y)
-            } else {
-                (f64::NAN, f64::NAN)
-            };
+            // Position is resolved from the head cell via the static grid (the
+            // server no longer sends a geographic Point per vehicle).
+            let (x, y) = cell_coords.get(&v.cell).copied().unwrap_or((f64::NAN, f64::NAN));
             let intermediate_cells = v.intermediate_cells
                 .iter()
                 .map(|c| c.to_string())
