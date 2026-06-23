@@ -342,8 +342,13 @@ type RunMetadata struct {
 	RandVersion string `protobuf:"bytes,6,opt,name=rand_version,json=randVersion,proto3" json:"rand_version,omitempty"`
 	// Hash of the inputs (grid + trips + TLS + routing options).
 	ConfigHash string `protobuf:"bytes,7,opt,name=config_hash,json=configHash,proto3" json:"config_hash,omitempty"`
-	// Self-describing column layout, for reader-side validation / forward-compat.
-	Schema        *ColumnSchema `protobuf:"bytes,8,opt,name=schema,proto3" json:"schema,omitempty"`
+	// Self-describing per-vehicle-row column layout of the blob, for reader-side
+	// validation / forward-compat.
+	Schema *ColumnSchema `protobuf:"bytes,8,opt,name=schema,proto3" json:"schema,omitempty"`
+	// Self-describing layout of the per-tick traffic-light signal section that
+	// follows the vehicle columns in the blob (see RECORD BLOB LAYOUT). Column
+	// types carry the element shape, e.g. "u8[tick_count*tl_group_count]".
+	TlSchema      *ColumnSchema `protobuf:"bytes,9,opt,name=tl_schema,json=tlSchema,proto3" json:"tl_schema,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -430,6 +435,13 @@ func (x *RunMetadata) GetConfigHash() string {
 func (x *RunMetadata) GetSchema() *ColumnSchema {
 	if x != nil {
 		return x.Schema
+	}
+	return nil
+}
+
+func (x *RunMetadata) GetTlSchema() *ColumnSchema {
+	if x != nil {
+		return x.TlSchema
 	}
 	return nil
 }
@@ -564,7 +576,7 @@ func (x *ColumnDef) GetType() string {
 //	u32  cell[R]                 // head cell id; geometry is resolved client-side from
 //	                             //   the static grid - NO coordinates are ever on the wire
 //	u8   agent_type[R]           // 0=Undefined 1=Car 2=Bus 3=Taxi 4=Pedestrian 5=Truck 6=LargeBus
-//	u16  angle_cdeg[R]           // bearing in centidegrees, normalized to [0,360); degrees*100
+//	u16  angle_cdeg[R]           // bearing in centidegrees, normalized to [0,360); round(degrees*100)
 //	i16  speed[R]                // cells per tick
 //	u32  trip_id[R]
 //
@@ -578,6 +590,14 @@ func (x *ColumnDef) GetType() string {
 //	                             //   ic_vals (otherwise fast vehicles undercount intermediate cells).
 //	u32  tail_off[R]             // tail_cells of multi-cell vehicles (bus / truck / large_bus).
 //	u32  tail_vals[tail_off[R-1]]    // flattened tail cell ids
+//
+// Traffic-light signals. The TL config is fixed for a run, so the group set
+// is constant; the per-tick signal of every group is recorded in a fixed key order:
+//
+//	u32  tl_group_count          // G = number of (tl_id, group_id) pairs
+//	{ u32 tl_id; u32 group_id }[G]   // the keys, sorted ascending
+//	u8   signal[tick_count * G]  // tick-major: tick k's G codes at [k*G .. k*G+G)
+//	                             //   0=undefined 1=r 2=y 3=g 4=G 5=s 6=u 7=o 8=O
 //
 // Notes:
 //   - Column-major + cell-id (no geometry) is what makes the blob compress several-fold
@@ -978,7 +998,7 @@ const file_record_proto_rawDesc = "" +
 	"\bmetadata\x18\x01 \x01(\v2\x1e.micro_traffic_sim.RunMetadataH\x00R\bmetadata\x126\n" +
 	"\x05batch\x18\x02 \x01(\v2\x1e.micro_traffic_sim.RecordBatchH\x00R\x05batch\x129\n" +
 	"\asummary\x18\x03 \x01(\v2\x1d.micro_traffic_sim.RunSummaryH\x00R\asummaryB\t\n" +
-	"\apayload\"\xbf\x02\n" +
+	"\apayload\"\xfd\x02\n" +
 	"\vRunMetadata\x12%\n" +
 	"\x0eformat_version\x18\x01 \x01(\rR\rformatVersion\x12!\n" +
 	"\ftick_seconds\x18\x02 \x01(\x01R\vtickSeconds\x12\x1d\n" +
@@ -989,7 +1009,8 @@ const file_record_proto_rawDesc = "" +
 	"\frand_version\x18\x06 \x01(\tR\vrandVersion\x12\x1f\n" +
 	"\vconfig_hash\x18\a \x01(\tR\n" +
 	"configHash\x127\n" +
-	"\x06schema\x18\b \x01(\v2\x1f.micro_traffic_sim.ColumnSchemaR\x06schema\"F\n" +
+	"\x06schema\x18\b \x01(\v2\x1f.micro_traffic_sim.ColumnSchemaR\x06schema\x12<\n" +
+	"\ttl_schema\x18\t \x01(\v2\x1f.micro_traffic_sim.ColumnSchemaR\btlSchema\"F\n" +
 	"\fColumnSchema\x126\n" +
 	"\acolumns\x18\x01 \x03(\v2\x1c.micro_traffic_sim.ColumnDefR\acolumns\"3\n" +
 	"\tColumnDef\x12\x12\n" +
@@ -1068,15 +1089,16 @@ var file_record_proto_depIdxs = []int32{
 	7,  // 3: micro_traffic_sim.RunAndRecordResponse.batch:type_name -> micro_traffic_sim.RecordBatch
 	8,  // 4: micro_traffic_sim.RunAndRecordResponse.summary:type_name -> micro_traffic_sim.RunSummary
 	5,  // 5: micro_traffic_sim.RunMetadata.schema:type_name -> micro_traffic_sim.ColumnSchema
-	6,  // 6: micro_traffic_sim.ColumnSchema.columns:type_name -> micro_traffic_sim.ColumnDef
-	13, // 7: micro_traffic_sim.RecordingStatusRequest.session_id:type_name -> micro_traffic_sim.UUIDv4
-	0,  // 8: micro_traffic_sim.RecordingStatusResponse.state:type_name -> micro_traffic_sim.RecordingState
-	13, // 9: micro_traffic_sim.StopRecordingRequest.session_id:type_name -> micro_traffic_sim.UUIDv4
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	5,  // 6: micro_traffic_sim.RunMetadata.tl_schema:type_name -> micro_traffic_sim.ColumnSchema
+	6,  // 7: micro_traffic_sim.ColumnSchema.columns:type_name -> micro_traffic_sim.ColumnDef
+	13, // 8: micro_traffic_sim.RecordingStatusRequest.session_id:type_name -> micro_traffic_sim.UUIDv4
+	0,  // 9: micro_traffic_sim.RecordingStatusResponse.state:type_name -> micro_traffic_sim.RecordingState
+	13, // 10: micro_traffic_sim.StopRecordingRequest.session_id:type_name -> micro_traffic_sim.UUIDv4
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_record_proto_init() }
