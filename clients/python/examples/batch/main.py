@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import os
-import struct
 import sys
 from dataclasses import dataclass
 from typing import Iterator
@@ -31,6 +30,7 @@ from micro_traffic_sim import (
     TripType,
     UUIDv4,
     ZoneType,
+    decode_record_batch,
 )
 
 
@@ -345,67 +345,32 @@ def decode_batch(
     cell_coords: dict[int, tuple[float, float]],
     tls_group_cells: dict[tuple[int, int], list[int]],
 ) -> list[str]:
-    o = 0
-
-    def rd(fmt: str, size: int):
-        nonlocal o
-        v = struct.unpack_from(fmt, blob, o)[0]
-        o += size
-        return v
-
-    o += 1
-    tick_start = rd("<I", 4)
-    tick_count = rd("<I", 4)
-    r = rd("<I", 4)
-
-    rows_per_tick = [rd("<I", 4) for _ in range(tick_count)]
-    veh_id = [rd("<I", 4) for _ in range(r)]
-    cell = [rd("<I", 4) for _ in range(r)]
-    agent_type = blob[o:o + r]
-    o += r
-    angle = [rd("<H", 2) for _ in range(r)]
-    speed = [rd("<h", 2) for _ in range(r)]
-    trip = [rd("<I", 4) for _ in range(r)]
-    ic_off = [rd("<I", 4) for _ in range(r)]
-    ic_vals = [rd("<I", 4) for _ in range(ic_off[-1] if r else 0)]
-    tail_off = [rd("<I", 4) for _ in range(r)]
-    tail_vals = [rd("<I", 4) for _ in range(tail_off[-1] if r else 0)]
-
-    g_count = rd("<I", 4)
-    tl_keys = [(rd("<I", 4), rd("<I", 4)) for _ in range(g_count)]
-    tl_signals = blob[o:o + tick_count * g_count]
-    o += tick_count * g_count
+    responses = decode_record_batch(blob)
 
     vtypes = {1: "car", 2: "bus", 3: "taxi", 4: "pedestrian", 5: "truck", 6: "large_bus"}
 
-    def sl(off: list[int], vals: list[int], row: int) -> str:
-        start = off[row - 1] if row > 0 else 0
-        return ",".join(str(v) for v in vals[start:off[row]])
-
-    row = 0
-    for t in range(tick_count):
-        step = tick_start + t
-        for _ in range(rows_per_tick[t]):
-            c = cell[row]
-            x, y = cell_coords.get(c, (math.nan, math.nan))
-            print(
-                f"{step};{veh_id[row]};{vtypes.get(agent_type[row], 'undefined')};{speed[row]};"
-                f"{angle[row] / 100.0:.2f};{sl(ic_off, ic_vals, row)};{c};{x:.2f};{y:.2f};"
-                f"{sl(tail_off, tail_vals, row)};{trip[row]}"
-            )
-            row += 1
-
-    sigstr = {1: "r", 2: "y", 3: "g", 4: "G", 5: "s", 6: "u", 7: "o", 8: "O"}
     tls_rows: list[str] = []
-    for t in range(tick_count):
-        step = tick_start + t
-        for gi in range(g_count):
-            tl_id, group_id = tl_keys[gi]
-            sig = sigstr.get(tl_signals[t * g_count + gi], "undefined")
-            for cell_id in tls_group_cells.get((tl_id, group_id), []):
-                if cell_id in cell_coords:
-                    x, y = cell_coords[cell_id]
-                    tls_rows.append(f"{step};{tl_id};{group_id};{cell_id};{x:.5f};{y:.5f};{sig}")
+    for resp in responses:
+        step = resp.timestamp
+
+        for v in resp.vehicle_data:
+            x, y = cell_coords.get(v.cell, (math.nan, math.nan))
+            ic = ",".join(str(c) for c in v.intermediate_cells)
+            tail = ",".join(str(c) for c in v.tail_cells)
+            print(
+                f"{step};{v.vehicle_id};{vtypes.get(v.vehicle_type, 'undefined')};{v.speed};"
+                f"{v.bearing:.2f};{ic};{v.cell};{x:.2f};{y:.2f};"
+                f"{tail};{v.trip_id}"
+            )
+
+        for tls_state in resp.tls_data:
+            for group in tls_state.groups:
+                for cell_id in tls_group_cells.get((tls_state.id, group.id), []):
+                    if cell_id in cell_coords:
+                        x, y = cell_coords[cell_id]
+                        tls_rows.append(
+                            f"{step};{tls_state.id};{group.id};{cell_id};{x:.5f};{y:.5f};{group.signal}"
+                        )
     return tls_rows
 
 

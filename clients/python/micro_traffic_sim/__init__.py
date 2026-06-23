@@ -61,6 +61,7 @@ from .record_pb2 import (
     StopRecordingResponse,
 )
 from .service_pb2_grpc import ServiceStub
+from .record_decode import decode_record_batch
 
 __all__ = [
     # UUID
@@ -116,6 +117,8 @@ __all__ = [
     "StopRecordingResponse",
     # Service
     "ServiceStub",
+    # Record decode
+    "decode_record_batch",
 ]
 
 __version__ = "0.0.1"
