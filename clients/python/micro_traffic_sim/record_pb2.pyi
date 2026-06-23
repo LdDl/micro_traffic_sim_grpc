@@ -48,7 +48,7 @@ class RunAndRecordResponse(_message.Message):
     def __init__(self, metadata: _Optional[_Union[RunMetadata, _Mapping]] = ..., batch: _Optional[_Union[RecordBatch, _Mapping]] = ..., summary: _Optional[_Union[RunSummary, _Mapping]] = ...) -> None: ...
 
 class RunMetadata(_message.Message):
-    __slots__ = ("format_version", "tick_seconds", "spawn_seed", "stochastic_seed", "core_version", "rand_version", "config_hash", "schema")
+    __slots__ = ("format_version", "tick_seconds", "spawn_seed", "stochastic_seed", "core_version", "rand_version", "config_hash", "schema", "tl_schema")
     FORMAT_VERSION_FIELD_NUMBER: _ClassVar[int]
     TICK_SECONDS_FIELD_NUMBER: _ClassVar[int]
     SPAWN_SEED_FIELD_NUMBER: _ClassVar[int]
@@ -57,6 +57,7 @@ class RunMetadata(_message.Message):
     RAND_VERSION_FIELD_NUMBER: _ClassVar[int]
     CONFIG_HASH_FIELD_NUMBER: _ClassVar[int]
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TL_SCHEMA_FIELD_NUMBER: _ClassVar[int]
     format_version: int
     tick_seconds: float
     spawn_seed: int
@@ -65,7 +66,8 @@ class RunMetadata(_message.Message):
     rand_version: str
     config_hash: str
     schema: ColumnSchema
-    def __init__(self, format_version: _Optional[int] = ..., tick_seconds: _Optional[float] = ..., spawn_seed: _Optional[int] = ..., stochastic_seed: _Optional[int] = ..., core_version: _Optional[str] = ..., rand_version: _Optional[str] = ..., config_hash: _Optional[str] = ..., schema: _Optional[_Union[ColumnSchema, _Mapping]] = ...) -> None: ...
+    tl_schema: ColumnSchema
+    def __init__(self, format_version: _Optional[int] = ..., tick_seconds: _Optional[float] = ..., spawn_seed: _Optional[int] = ..., stochastic_seed: _Optional[int] = ..., core_version: _Optional[str] = ..., rand_version: _Optional[str] = ..., config_hash: _Optional[str] = ..., schema: _Optional[_Union[ColumnSchema, _Mapping]] = ..., tl_schema: _Optional[_Union[ColumnSchema, _Mapping]] = ...) -> None: ...
 
 class ColumnSchema(_message.Message):
     __slots__ = ("columns",)
