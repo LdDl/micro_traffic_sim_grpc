@@ -5,45 +5,9 @@ import (
 	"fmt"
 )
 
-// RecordedVehicle is a single decoded vehicle row from a RecordBatch
-// columns blob. Tick is the absolute simulation tick the row belongs to
-// (computed from tick_start plus the per-tick row grouping). AgentType is
-// the raw agent-type code (0=Undefined 1=Car 2=Bus 3=Taxi 4=Pedestrian
-// 5=Truck 6=LargeBus); display name mapping is left to the caller. Angle
-// is the bearing in degrees (the on-wire centidegrees divided by 100).
-type RecordedVehicle struct {
-	Tick              uint64
-	VehicleID         uint32
-	Cell              int64
-	AgentType         uint8
-	Angle             float64
-	Speed             int16
-	TripID            uint32
-	IntermediateCells []uint32
-	TailCells         []uint32
-}
-
-// RecordedSignal is a single decoded traffic-light signal sample for one
-// (TLID, GroupID) key at an absolute simulation Tick. Signal is the signal
-// character (e.g. "r", "y", "g", "G", "s", "u", "o", "O" or "undefined").
-type RecordedSignal struct {
-	Tick    uint64
-	TLID    uint32
-	GroupID uint32
-	Signal  string
-}
-
-// DecodedBatch is the structured result of decoding a RecordBatch columns
-// blob: the vehicle rows (in tick order, then in the on-wire order within
-// each tick) and the traffic-light signal samples (in tick order, then in
-// the on-wire key order within each tick).
-type DecodedBatch struct {
-	Vehicles []RecordedVehicle
-	Signals  []RecordedSignal
-}
-
-// signalName maps the on-wire signal code to its string representation.
-func signalName(c byte) string {
+// signalChar maps the on-wire signal code to its string representation
+// (0=undefined 1=r 2=y 3=g 4=G 5=s 6=u 7=o 8=O).
+func signalChar(c byte) string {
 	switch c {
 	case 1:
 		return "r"
@@ -68,12 +32,22 @@ func signalName(c byte) string {
 
 // DecodeRecordBatch decodes a version-1 RecordBatch columns blob (as packed
 // by the server's BatchAcc::to_blob and documented in protos/record.proto)
-// into a DecodedBatch. All multi-byte integers are little-endian.
+// into a per-tick list of *SessionStepResponse, one element per tick in the
+// batch. Replaying a recording therefore yields the SAME proto types that the
+// live SimulationStepSession RPC returns. All multi-byte integers are
+// little-endian.
+//
+// Each *SessionStepResponse has Code=0, Text="", Timestamp=tick_start+index,
+// VehicleData built from the per-tick vehicle rows (VehicleType is the raw
+// agent-type code converted to AgentType; the codes align exactly; Bearing is
+// the on-wire centidegrees divided by 100; TravelTime is -1 because it is not
+// recorded), and TlsData built by grouping the tick's traffic-light signals by
+// tl_id into one TLSState per tl_id (each holding a TLGroup per group_id).
 //
 // It returns an error if the version byte is not 1 or if the input is
-// truncated. Empty batches (no vehicle rows and/or no traffic-light groups)
-// decode without error into empty slices.
-func DecodeRecordBatch(columns []byte) (*DecodedBatch, error) {
+// truncated; it never panics. Empty batches (no ticks, no vehicle rows and/or
+// no traffic-light groups) decode without error.
+func DecodeRecordBatch(columns []byte) ([]*SessionStepResponse, error) {
 	o := 0
 
 	// need reports whether n more bytes are available from the current offset.
@@ -131,6 +105,14 @@ func DecodeRecordBatch(columns []byte) (*DecodedBatch, error) {
 			return nil, err
 		}
 		rowsPerTick[i] = int(v)
+	}
+
+	total := 0
+	for _, n := range rowsPerTick {
+		total += n
+	}
+	if total != r {
+		return nil, fmt.Errorf("microtraffic: rows_per_tick sum %d != total_rows %d", total, r)
 	}
 
 	vehID := make([]uint32, r)
@@ -244,51 +226,67 @@ func DecodeRecordBatch(columns []byte) (*DecodedBatch, error) {
 	tlSignals := columns[o : o+tickCount*gCount]
 	o += tickCount * gCount
 
-	// slice returns the variable-length values for the given row out of a
-	// cumulative-END-offset array (row i covers off[i-1]..off[i], off[-1]:=0).
-	slice := func(off []int, vals []uint32, row int) []uint32 {
+	// slice returns the variable-length int64 values for the given row out of
+	// a cumulative-END-offset array (row i covers off[i-1]..off[i], off[-1]:=0).
+	slice := func(off []int, vals []uint32, row int) []int64 {
 		start := 0
 		if row > 0 {
 			start = off[row-1]
 		}
 		end := off[row]
-		out := make([]uint32, end-start)
-		copy(out, vals[start:end])
+		out := make([]int64, end-start)
+		for i := range out {
+			out[i] = int64(vals[start+i])
+		}
 		return out
 	}
 
-	batch := &DecodedBatch{}
+	responses := make([]*SessionStepResponse, 0, tickCount)
 
 	row := 0
 	for t := 0; t < tickCount; t++ {
-		tick := uint64(tickStart) + uint64(t)
+		resp := &SessionStepResponse{
+			Code:      0,
+			Text:      "",
+			Timestamp: int64(tickStart) + int64(t),
+		}
+
 		for k := 0; k < rowsPerTick[t]; k++ {
-			batch.Vehicles = append(batch.Vehicles, RecordedVehicle{
-				Tick:              tick,
-				VehicleID:         vehID[row],
+			resp.VehicleData = append(resp.VehicleData, &VehicleState{
+				VehicleId:         int64(vehID[row]),
+				VehicleType:       AgentType(agentType[row]),
+				Bearing:           float64(angle[row]) / 100.0,
+				Speed:             int64(speed[row]),
 				Cell:              int64(cell[row]),
-				AgentType:         agentType[row],
-				Angle:             float64(angle[row]) / 100.0,
-				Speed:             speed[row],
-				TripID:            trip[row],
 				IntermediateCells: slice(icOff, icVals, row),
+				TravelTime:        -1,
+				TripId:            int64(trip[row]),
 				TailCells:         slice(tailOff, tailVals, row),
 			})
 			row++
 		}
-	}
 
-	for t := 0; t < tickCount; t++ {
-		tick := uint64(tickStart) + uint64(t)
+		// Group the tick's signals by tl_id into one TLSState per tl_id. The
+		// keys are sorted by (tl_id, group_id), so same-tl_id keys are
+		// contiguous and a running pointer suffices.
+		var curTLS *TLSState
+		var curID uint32
 		for gi := 0; gi < gCount; gi++ {
-			batch.Signals = append(batch.Signals, RecordedSignal{
-				Tick:    tick,
-				TLID:    tlKeys[gi][0],
-				GroupID: tlKeys[gi][1],
-				Signal:  signalName(tlSignals[t*gCount+gi]),
+			tlID := tlKeys[gi][0]
+			groupID := tlKeys[gi][1]
+			if curTLS == nil || tlID != curID {
+				curTLS = &TLSState{Id: int64(tlID)}
+				curID = tlID
+				resp.TlsData = append(resp.TlsData, curTLS)
+			}
+			curTLS.Groups = append(curTLS.Groups, &TLGroup{
+				Id:     int64(groupID),
+				Signal: signalChar(tlSignals[t*gCount+gi]),
 			})
 		}
+
+		responses = append(responses, resp)
 	}
 
-	return batch, nil
+	return responses, nil
 }

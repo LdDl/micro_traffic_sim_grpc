@@ -444,30 +444,12 @@ func main() {
 }
 
 func decodeBatch(blob []byte, cellCoords map[int64][2]float64, tlsGroupCells map[[2]int64][]int64) []string {
-	batch, err := microtraffic.DecodeRecordBatch(blob)
+	responses, err := microtraffic.DecodeRecordBatch(blob)
 	if err != nil {
 		panic(err)
 	}
 
-	vtype := func(t uint8) string {
-		switch t {
-		case 1:
-			return "car"
-		case 2:
-			return "bus"
-		case 3:
-			return "taxi"
-		case 4:
-			return "pedestrian"
-		case 5:
-			return "truck"
-		case 6:
-			return "large_bus"
-		default:
-			return "undefined"
-		}
-	}
-	cellsStr := func(vals []uint32) string {
+	cellsStr := func(vals []int64) string {
 		parts := make([]string, 0, len(vals))
 		for _, v := range vals {
 			parts = append(parts, fmt.Sprintf("%d", v))
@@ -475,26 +457,47 @@ func decodeBatch(blob []byte, cellCoords map[int64][2]float64, tlsGroupCells map
 		return strings.Join(parts, ",")
 	}
 
-	for _, v := range batch.Vehicles {
-		c := v.Cell
-		x, y := math.NaN(), math.NaN()
-		if xy, ok := cellCoords[c]; ok {
-			x, y = xy[0], xy[1]
-		}
-		fmt.Printf("%d;%d;%s;%d;%.2f;%s;%d;%.2f;%.2f;%s;%d\n",
-			v.Tick, v.VehicleID, vtype(v.AgentType), v.Speed, v.Angle,
-			cellsStr(v.IntermediateCells), c, x, y, cellsStr(v.TailCells), v.TripID)
-	}
-
 	var tlsRows []string
-	for _, s := range batch.Signals {
-		tlID := int64(s.TLID)
-		groupID := int64(s.GroupID)
-		if cells, ok := tlsGroupCells[[2]int64{tlID, groupID}]; ok {
-			for _, cellID := range cells {
-				if xy, ok := cellCoords[cellID]; ok {
-					tlsRows = append(tlsRows, fmt.Sprintf("%d;%d;%d;%d;%.5f;%.5f;%s",
-						s.Tick, tlID, groupID, cellID, xy[0], xy[1], s.Signal))
+	for _, resp := range responses {
+		timestamp := resp.Timestamp
+
+		for _, v := range resp.VehicleData {
+			c := v.Cell
+			x, y := math.NaN(), math.NaN()
+			if xy, ok := cellCoords[c]; ok {
+				x, y = xy[0], xy[1]
+			}
+
+			vehicleType := "undefined"
+			switch v.VehicleType {
+			case microtraffic.AgentType_AGENT_TYPE_CAR:
+				vehicleType = "car"
+			case microtraffic.AgentType_AGENT_TYPE_BUS:
+				vehicleType = "bus"
+			case microtraffic.AgentType_AGENT_TYPE_TAXI:
+				vehicleType = "taxi"
+			case microtraffic.AgentType_AGENT_TYPE_PEDESTRIAN:
+				vehicleType = "pedestrian"
+			case microtraffic.AgentType_AGENT_TYPE_TRUCK:
+				vehicleType = "truck"
+			case microtraffic.AgentType_AGENT_TYPE_LARGE_BUS:
+				vehicleType = "large_bus"
+			}
+
+			fmt.Printf("%d;%d;%s;%d;%.2f;%s;%d;%.2f;%.2f;%s;%d\n",
+				timestamp, v.VehicleId, vehicleType, v.Speed, v.Bearing,
+				cellsStr(v.IntermediateCells), c, x, y, cellsStr(v.TailCells), v.TripId)
+		}
+
+		for _, tlsState := range resp.TlsData {
+			for _, group := range tlsState.Groups {
+				if cells, ok := tlsGroupCells[[2]int64{tlsState.Id, group.Id}]; ok {
+					for _, cellID := range cells {
+						if xy, ok := cellCoords[cellID]; ok {
+							tlsRows = append(tlsRows, fmt.Sprintf("%d;%d;%d;%d;%.5f;%.5f;%s",
+								timestamp, tlsState.Id, group.Id, cellID, xy[0], xy[1], group.Signal))
+						}
+					}
 				}
 			}
 		}
