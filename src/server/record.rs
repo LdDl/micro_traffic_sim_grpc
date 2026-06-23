@@ -95,7 +95,7 @@ impl BatchAcc {
             self.cell.push(v.last_cell as u32);
             self.vtype.push(agent_type_u8(v.vehicle_type));
             self.angle
-                .push((v.last_angle.rem_euclid(360.0) * 100.0) as u16);
+                .push((v.last_angle.rem_euclid(360.0) * 100.0).round() as u16);
             self.speed.push(v.last_speed as i16);
             self.trip.push(v.trip_id as u32);
             for &c in &v.last_intermediate_cells {

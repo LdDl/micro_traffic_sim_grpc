@@ -150,7 +150,7 @@ message ColumnDef {
 //   u32  cell[R]                 // head cell id; geometry is resolved client-side from
 //                                //   the static grid - NO coordinates are ever on the wire
 //   u8   agent_type[R]           // 0=Undefined 1=Car 2=Bus 3=Taxi 4=Pedestrian 5=Truck 6=LargeBus
-//   u16  angle_cdeg[R]           // bearing in centidegrees, normalized to [0,360); degrees*100
+//   u16  angle_cdeg[R]           // bearing in centidegrees, normalized to [0,360); round(degrees*100)
 //   i16  speed[R]                // cells per tick
 //   u32  trip_id[R]
 //
