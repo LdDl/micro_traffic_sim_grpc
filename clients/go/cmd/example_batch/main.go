@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"math"
@@ -445,77 +444,12 @@ func main() {
 }
 
 func decodeBatch(blob []byte, cellCoords map[int64][2]float64, tlsGroupCells map[[2]int64][]int64) []string {
-	o := 0
-	rdU32 := func() uint32 { v := binary.LittleEndian.Uint32(blob[o : o+4]); o += 4; return v }
-	rdU16 := func() uint16 { v := binary.LittleEndian.Uint16(blob[o : o+2]); o += 2; return v }
-	rdI16 := func() int16 { v := int16(binary.LittleEndian.Uint16(blob[o : o+2])); o += 2; return v }
-
-	o++
-	tickStart := int(rdU32())
-	tickCount := int(rdU32())
-	r := int(rdU32())
-
-	rowsPerTick := make([]int, tickCount)
-	for i := range rowsPerTick {
-		rowsPerTick[i] = int(rdU32())
-	}
-	vehID := make([]uint32, r)
-	for i := range vehID {
-		vehID[i] = rdU32()
-	}
-	cell := make([]uint32, r)
-	for i := range cell {
-		cell[i] = rdU32()
-	}
-	agentType := blob[o : o+r]
-	o += r
-	angle := make([]uint16, r)
-	for i := range angle {
-		angle[i] = rdU16()
-	}
-	speed := make([]int16, r)
-	for i := range speed {
-		speed[i] = rdI16()
-	}
-	trip := make([]uint32, r)
-	for i := range trip {
-		trip[i] = rdU32()
-	}
-	icOff := make([]int, r)
-	for i := range icOff {
-		icOff[i] = int(rdU32())
-	}
-	icTotal := 0
-	if r > 0 {
-		icTotal = icOff[r-1]
-	}
-	icVals := make([]uint32, icTotal)
-	for i := range icVals {
-		icVals[i] = rdU32()
-	}
-	tailOff := make([]int, r)
-	for i := range tailOff {
-		tailOff[i] = int(rdU32())
-	}
-	tailTotal := 0
-	if r > 0 {
-		tailTotal = tailOff[r-1]
-	}
-	tailVals := make([]uint32, tailTotal)
-	for i := range tailVals {
-		tailVals[i] = rdU32()
+	batch, err := microtraffic.DecodeRecordBatch(blob)
+	if err != nil {
+		panic(err)
 	}
 
-	gCount := int(rdU32())
-	tlKeys := make([][2]uint32, gCount)
-	for i := range tlKeys {
-		tlKeys[i] = [2]uint32{rdU32(), rdU32()}
-	}
-	tlSignals := blob[o : o+tickCount*gCount]
-	o += tickCount * gCount
-	_ = o
-
-	vtype := func(t byte) string {
+	vtype := func(t uint8) string {
 		switch t {
 		case 1:
 			return "car"
@@ -533,69 +467,34 @@ func decodeBatch(blob []byte, cellCoords map[int64][2]float64, tlsGroupCells map
 			return "undefined"
 		}
 	}
-	sliceStr := func(off []int, vals []uint32, row int) string {
-		start := 0
-		if row > 0 {
-			start = off[row-1]
-		}
-		parts := make([]string, 0, off[row]-start)
-		for _, v := range vals[start:off[row]] {
+	cellsStr := func(vals []uint32) string {
+		parts := make([]string, 0, len(vals))
+		for _, v := range vals {
 			parts = append(parts, fmt.Sprintf("%d", v))
 		}
 		return strings.Join(parts, ",")
 	}
 
-	row := 0
-	for t := 0; t < tickCount; t++ {
-		step := tickStart + t
-		for k := 0; k < rowsPerTick[t]; k++ {
-			c := int64(cell[row])
-			x, y := math.NaN(), math.NaN()
-			if xy, ok := cellCoords[c]; ok {
-				x, y = xy[0], xy[1]
-			}
-			fmt.Printf("%d;%d;%s;%d;%.2f;%s;%d;%.2f;%.2f;%s;%d\n",
-				step, vehID[row], vtype(agentType[row]), speed[row], float64(angle[row])/100.0,
-				sliceStr(icOff, icVals, row), c, x, y, sliceStr(tailOff, tailVals, row), trip[row])
-			row++
+	for _, v := range batch.Vehicles {
+		c := v.Cell
+		x, y := math.NaN(), math.NaN()
+		if xy, ok := cellCoords[c]; ok {
+			x, y = xy[0], xy[1]
 		}
+		fmt.Printf("%d;%d;%s;%d;%.2f;%s;%d;%.2f;%.2f;%s;%d\n",
+			v.Tick, v.VehicleID, vtype(v.AgentType), v.Speed, v.Angle,
+			cellsStr(v.IntermediateCells), c, x, y, cellsStr(v.TailCells), v.TripID)
 	}
 
-	sigstr := func(c byte) string {
-		switch c {
-		case 1:
-			return "r"
-		case 2:
-			return "y"
-		case 3:
-			return "g"
-		case 4:
-			return "G"
-		case 5:
-			return "s"
-		case 6:
-			return "u"
-		case 7:
-			return "o"
-		case 8:
-			return "O"
-		default:
-			return "undefined"
-		}
-	}
 	var tlsRows []string
-	for t := 0; t < tickCount; t++ {
-		step := tickStart + t
-		for gi := 0; gi < gCount; gi++ {
-			tlID := int64(tlKeys[gi][0])
-			groupID := int64(tlKeys[gi][1])
-			sig := sigstr(tlSignals[t*gCount+gi])
-			if cells, ok := tlsGroupCells[[2]int64{tlID, groupID}]; ok {
-				for _, cellID := range cells {
-					if xy, ok := cellCoords[cellID]; ok {
-						tlsRows = append(tlsRows, fmt.Sprintf("%d;%d;%d;%d;%.5f;%.5f;%s",
-							step, tlID, groupID, cellID, xy[0], xy[1], sig))
-					}
+	for _, s := range batch.Signals {
+		tlID := int64(s.TLID)
+		groupID := int64(s.GroupID)
+		if cells, ok := tlsGroupCells[[2]int64{tlID, groupID}]; ok {
+			for _, cellID := range cells {
+				if xy, ok := cellCoords[cellID]; ok {
+					tlsRows = append(tlsRows, fmt.Sprintf("%d;%d;%d;%d;%.5f;%.5f;%s",
+						s.Tick, tlID, groupID, cellID, xy[0], xy[1], s.Signal))
 				}
 			}
 		}

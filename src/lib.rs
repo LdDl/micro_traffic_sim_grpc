@@ -120,5 +120,12 @@ pub mod pb {
     include!(concat!(env!("OUT_DIR"), "/micro_traffic_sim.rs"));
 }
 
+/// Decoder for the RunAndRecord RecordBatch columns blob.
+///
+/// Turns the opaque little-endian batch blob into structured vehicles and
+/// traffic light signals so SDK users do not reimplement the binary parsing.
+/// This module is always available and does not require the `server` feature).
+pub mod record;
+
 // Re-export all generated types at crate root for convenience.
 pub use pb::*;
