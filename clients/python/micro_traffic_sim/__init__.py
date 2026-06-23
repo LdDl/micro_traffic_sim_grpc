@@ -45,6 +45,21 @@ from .step_pb2 import (
     TLGroup,
     AgentType,
 )
+from .record_pb2 import (
+    RunAndRecordRequest,
+    RunAndRecordResponse,
+    RecordFilter,
+    RunMetadata,
+    ColumnSchema,
+    ColumnDef,
+    RecordBatch,
+    RunSummary,
+    RecordingState,
+    RecordingStatusRequest,
+    RecordingStatusResponse,
+    StopRecordingRequest,
+    StopRecordingResponse,
+)
 from .service_pb2_grpc import ServiceStub
 
 __all__ = [
@@ -85,6 +100,20 @@ __all__ = [
     "TLSState",
     "TLGroup",
     "AgentType",
+    # Record
+    "RunAndRecordRequest",
+    "RunAndRecordResponse",
+    "RecordFilter",
+    "RunMetadata",
+    "ColumnSchema",
+    "ColumnDef",
+    "RecordBatch",
+    "RunSummary",
+    "RecordingState",
+    "RecordingStatusRequest",
+    "RecordingStatusResponse",
+    "StopRecordingRequest",
+    "StopRecordingResponse",
     # Service
     "ServiceStub",
 ]

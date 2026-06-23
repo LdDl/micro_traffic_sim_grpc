@@ -6,10 +6,16 @@ build.log
 # Example output files
 examples/rust_client/output.txt
 examples/rust_client/output.gif
+examples/rust_client_batch/output.txt
+examples/rust_client_batch/output.gif
 clients/go/cmd/example/output.txt
 clients/go/cmd/example/output.gif
-clients/python/examples/output.txt
-clients/python/examples/output.gif
+clients/go/cmd/example_batch/output.txt
+clients/go/cmd/example_batch/output.gif
+clients/python/examples/step_by_step/output.txt
+clients/python/examples/step_by_step/output.gif
+clients/python/examples/batch/output.txt
+clients/python/examples/batch/output.gif
 *.dat
 
 # Python

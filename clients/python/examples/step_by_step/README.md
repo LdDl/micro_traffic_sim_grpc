@@ -27,7 +27,7 @@ From the repository root:
 
 ```sh
 source clients/python/.venv/bin/activate
-python clients/python/examples/main.py > clients/python/examples/output.txt
+python clients/python/examples/step_by_step/main.py > clients/python/examples/step_by_step/output.txt
 ```
 
 ## Generate visualization
@@ -35,10 +35,10 @@ python clients/python/examples/main.py > clients/python/examples/output.txt
 After running the example, generate an animated GIF with gnuplot:
 
 ```sh
-gnuplot clients/python/examples/plot_anim.gnuplot
+cd clients/python/examples/step_by_step && gnuplot plot_anim.gnuplot
 ```
 
-This creates `clients/python/examples/output.gif`.
+This creates `clients/python/examples/step_by_step/output.gif`.
 
 ## What the example does
 

@@ -1,6 +1,13 @@
-# Rust client example for micro_traffic_sim gRPC Server
+# Rust batch recording example for micro_traffic_sim gRPC Server
 
-This example demonstrates a complete traffic simulation workflow using the Rust gRPC client.
+This example mirrors [`rust_client`](../rust_client) but, instead of stepping the
+simulation tick by tick and pulling state back on every tick, it runs the whole
+horizon server-side in a single `RunAndRecord` streaming call and decodes the
+columnar recording it returns.
+
+The session setup (grid, conflict zones, traffic light, trips) and the output
+format are identical to the step-by-step example - only the run call differs, so
+the same `plot_anim.gnuplot` script visualizes the result.
 
 ## Prerequisites
 
@@ -26,7 +33,7 @@ export MT_SIM_ADDR=127.0.0.1:50051
 From the repository root:
 
 ```sh
-cargo run --example rust_client > examples/rust_client/output.txt
+cargo run --example rust_client_batch > examples/rust_client_batch/output.txt
 ```
 
 ## Generate visualization
@@ -34,10 +41,14 @@ cargo run --example rust_client > examples/rust_client/output.txt
 After running the example, generate an animated GIF with gnuplot:
 
 ```sh
-cd examples/rust_client && gnuplot plot_anim.gnuplot
+cd examples/rust_client_batch && gnuplot plot_anim.gnuplot
 ```
 
-This creates `examples/rust_client/output.gif`.
+This creates `examples/rust_client_batch/output.gif`.
+
+The plot script is identical to the step-by-step example's. The headless recording
+carries only vehicle trajectories, so per-tick traffic-light signals are not
+replayed - the animation shows the scene and vehicles but no live signal state.
 
 ## What the example does
 
@@ -46,7 +57,8 @@ This creates `examples/rust_client/output.gif`.
 3. Configures conflict zones at the intersection
 4. Sets up a traffic light with 2 signal groups
 5. Creates 3 vehicle trip generators (spawning cars, buses, and taxis)
-6. Runs 50 simulation steps and outputs vehicle/traffic light states
+6. Runs the full 50-tick horizon in a single `RunAndRecord` call and decodes the
+   streamed columnar batches into per-tick vehicle rows
 
 The output format is compatible with the gnuplot script for visualization.
 
