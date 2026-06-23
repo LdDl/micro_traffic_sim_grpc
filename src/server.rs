@@ -1,21 +1,23 @@
+use futures_core::Stream;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use tokio::time::{sleep, Duration};
-use futures_core::Stream;
-use tonic::{transport::Server, Request, Response, Status};
+use tokio::time::{Duration, sleep};
+use tonic::{Request, Response, Status, transport::Server};
 
 use micro_traffic_sim::pb;
 use micro_traffic_sim_core::simulation::sessions_storage::SessionsStorage;
 use micro_traffic_sim_core::verbose::VerboseLevel;
 
 // Submodules with per-RPC handlers (keep logic out of this file)
-mod sessions;
+mod conflict_zones;
 mod grid;
-mod trip;
+mod record;
+mod recordings;
+mod sessions;
 mod step;
 mod tls;
-mod conflict_zones;
+mod trip;
 
 // Shared stream type alias for bidirectional streaming
 pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send + 'static>>;
@@ -23,6 +25,7 @@ pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Se
 struct SimService {
     sessions: Arc<Mutex<SessionsStorage>>,
     session_verbose: VerboseLevel,
+    recordings: recordings::Recordings,
 }
 
 #[tonic::async_trait]
@@ -32,6 +35,7 @@ impl pb::service_server::Service for SimService {
     type SimulationStepSessionStream = BoxStream<pb::SessionStepResponse>;
     type PushSessionTLSStream = BoxStream<pb::SessionTlsResponse>;
     type PushSessionConflictZonesStream = BoxStream<pb::SessionConflictZonesResponse>;
+    type RunAndRecordStream = BoxStream<pb::RunAndRecordResponse>;
 
     async fn new_session(
         &self,
@@ -81,6 +85,27 @@ impl pb::service_server::Service for SimService {
     ) -> Result<Response<Self::PushSessionConflictZonesStream>, Status> {
         conflict_zones::push_session_conflict_zones(self.sessions.clone(), request).await
     }
+
+    async fn run_and_record(
+        &self,
+        request: Request<pb::RunAndRecordRequest>,
+    ) -> Result<Response<Self::RunAndRecordStream>, Status> {
+        record::run_and_record(self.sessions.clone(), self.recordings.clone(), request).await
+    }
+
+    async fn recording_status(
+        &self,
+        request: Request<pb::RecordingStatusRequest>,
+    ) -> Result<Response<pb::RecordingStatusResponse>, Status> {
+        recordings::recording_status(self.recordings.clone(), request).await
+    }
+
+    async fn stop_recording(
+        &self,
+        request: Request<pb::StopRecordingRequest>,
+    ) -> Result<Response<pb::StopRecordingResponse>, Status> {
+        recordings::stop_recording(self.recordings.clone(), request).await
+    }
 }
 
 fn spawn_purge_task(sessions: Arc<Mutex<SessionsStorage>>) {
@@ -109,13 +134,11 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     // MT_SIM_VERBOSE: per-session simulation logging (steps, conflicts, movement). Default: 0 (None)
-    let sim_verbose = parse_verbose(
-        &std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "0".to_string()),
-    );
+    let sim_verbose =
+        parse_verbose(&std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "0".to_string()));
     // MT_SIM_SERVICE_VERBOSE: storage-level logging (session create/expire). Default: 1 (Main)
-    let storage_verbose = parse_verbose(
-        &std::env::var("MT_SIM_SERVICE_VERBOSE").unwrap_or_else(|_| "1".to_string()),
-    );
+    let storage_verbose =
+        parse_verbose(&std::env::var("MT_SIM_SERVICE_VERBOSE").unwrap_or_else(|_| "1".to_string()));
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
         .with_session_exp_time(Duration::from_secs(4 * 60))
@@ -127,6 +150,7 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     let svc = pb::service_server::ServiceServer::new(SimService {
         sessions: sessions.clone(),
         session_verbose: sim_verbose,
+        recordings: recordings::new_registry(),
     });
 
     println!("Starting micro_traffic_sim gRPC server on {}", addr);

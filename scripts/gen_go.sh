@@ -35,6 +35,7 @@ Mprotos/step.proto=$PKG_IMPORT_PATH,\
 Mprotos/trip.proto=$PKG_IMPORT_PATH,\
 Mprotos/tls.proto=$PKG_IMPORT_PATH,\
 Mprotos/conflict_zones.proto=$PKG_IMPORT_PATH,\
+Mprotos/record.proto=$PKG_IMPORT_PATH,\
 Mprotos/uuid.proto=$PKG_IMPORT_PATH \
   --go-grpc_out="$OUT_DIR" --go-grpc_opt=paths=source_relative \
   "$PROTO_DIR/service.proto" \
@@ -44,6 +45,7 @@ Mprotos/uuid.proto=$PKG_IMPORT_PATH \
   "$PROTO_DIR/trip.proto" \
   "$PROTO_DIR/tls.proto" \
   "$PROTO_DIR/conflict_zones.proto" \
+  "$PROTO_DIR/record.proto" \
   "$PROTO_DIR/uuid.proto"
 
 echo "Go client generated:"

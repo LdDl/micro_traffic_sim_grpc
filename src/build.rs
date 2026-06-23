@@ -5,7 +5,7 @@ fn main() {
 
     // Compile all protos in one shot; tonic/prost will emit a single
     // Rust module per proto package into OUT_DIR (default behavior).
-    let protos: [&str; 8] = [
+    let protos: [&str; 9] = [
         "protos/service.proto",
         "protos/cell.proto",
         "protos/session.proto",
@@ -13,6 +13,7 @@ fn main() {
         "protos/trip.proto",
         "protos/tls.proto",
         "protos/conflict_zones.proto",
+        "protos/record.proto",
         "protos/uuid.proto",
     ];
 

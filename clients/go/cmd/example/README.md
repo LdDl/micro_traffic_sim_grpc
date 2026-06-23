@@ -34,7 +34,7 @@ go run -C clients/go/cmd/example . > clients/go/cmd/example/output.txt
 After running the example, generate an animated GIF with gnuplot:
 
 ```sh
-gnuplot clients/go/cmd/example/plot_anim.gnuplot
+cd clients/go/cmd/example && gnuplot plot_anim.gnuplot
 ```
 
 This creates `clients/go/cmd/example/output.gif`.

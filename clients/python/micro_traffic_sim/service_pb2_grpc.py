@@ -5,6 +5,7 @@ import warnings
 
 from . import cell_pb2 as cell__pb2
 from . import conflict_zones_pb2 as conflict__zones__pb2
+from . import record_pb2 as record__pb2
 from . import session_pb2 as session__pb2
 from . import step_pb2 as step__pb2
 from . import tls_pb2 as tls__pb2
@@ -75,6 +76,21 @@ class ServiceStub(object):
                 request_serializer=conflict__zones__pb2.SessionConflictZones.SerializeToString,
                 response_deserializer=conflict__zones__pb2.SessionConflictZonesResponse.FromString,
                 _registered_method=True)
+        self.RunAndRecord = channel.unary_stream(
+                '/micro_traffic_sim.Service/RunAndRecord',
+                request_serializer=record__pb2.RunAndRecordRequest.SerializeToString,
+                response_deserializer=record__pb2.RunAndRecordResponse.FromString,
+                _registered_method=True)
+        self.RecordingStatus = channel.unary_unary(
+                '/micro_traffic_sim.Service/RecordingStatus',
+                request_serializer=record__pb2.RecordingStatusRequest.SerializeToString,
+                response_deserializer=record__pb2.RecordingStatusResponse.FromString,
+                _registered_method=True)
+        self.StopRecording = channel.unary_unary(
+                '/micro_traffic_sim.Service/StopRecording',
+                request_serializer=record__pb2.StopRecordingRequest.SerializeToString,
+                response_deserializer=record__pb2.StopRecordingResponse.FromString,
+                _registered_method=True)
 
 
 class ServiceServicer(object):
@@ -129,6 +145,28 @@ class ServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunAndRecord(self, request, context):
+        """Run the session forward headless (no per-tick round-trip) and stream
+        recorded trajectory batches for offline Parquet assembly + windowed replay.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RecordingStatus(self, request, context):
+        """Poll the progress/state of a running recording by session id (from any connection).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StopRecording(self, request, context):
+        """Request a running recording to stop (cooperative), by session id (from any connection).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -166,6 +204,21 @@ def add_ServiceServicer_to_server(servicer, server):
                     servicer.PushSessionConflictZones,
                     request_deserializer=conflict__zones__pb2.SessionConflictZones.FromString,
                     response_serializer=conflict__zones__pb2.SessionConflictZonesResponse.SerializeToString,
+            ),
+            'RunAndRecord': grpc.unary_stream_rpc_method_handler(
+                    servicer.RunAndRecord,
+                    request_deserializer=record__pb2.RunAndRecordRequest.FromString,
+                    response_serializer=record__pb2.RunAndRecordResponse.SerializeToString,
+            ),
+            'RecordingStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.RecordingStatus,
+                    request_deserializer=record__pb2.RecordingStatusRequest.FromString,
+                    response_serializer=record__pb2.RecordingStatusResponse.SerializeToString,
+            ),
+            'StopRecording': grpc.unary_unary_rpc_method_handler(
+                    servicer.StopRecording,
+                    request_deserializer=record__pb2.StopRecordingRequest.FromString,
+                    response_serializer=record__pb2.StopRecordingResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -357,6 +410,87 @@ class Service(object):
             '/micro_traffic_sim.Service/PushSessionConflictZones',
             conflict__zones__pb2.SessionConflictZones.SerializeToString,
             conflict__zones__pb2.SessionConflictZonesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunAndRecord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/micro_traffic_sim.Service/RunAndRecord',
+            record__pb2.RunAndRecordRequest.SerializeToString,
+            record__pb2.RunAndRecordResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RecordingStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/micro_traffic_sim.Service/RecordingStatus',
+            record__pb2.RecordingStatusRequest.SerializeToString,
+            record__pb2.RecordingStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StopRecording(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/micro_traffic_sim.Service/StopRecording',
+            record__pb2.StopRecordingRequest.SerializeToString,
+            record__pb2.StopRecordingResponse.FromString,
             options,
             channel_credentials,
             insecure,

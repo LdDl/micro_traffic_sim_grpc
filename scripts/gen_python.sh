@@ -50,6 +50,7 @@ python3 -m grpc_tools.protoc \
   "$PROTO_DIR/trip.proto" \
   "$PROTO_DIR/tls.proto" \
   "$PROTO_DIR/conflict_zones.proto" \
+  "$PROTO_DIR/record.proto" \
   "$PROTO_DIR/uuid.proto"
 
 # Fix imports in generated files (change absolute to relative imports)
@@ -70,4 +71,5 @@ echo "Virtual environment: $VENV_DIR"
 echo ""
 echo "To use:"
 echo "  source $VENV_DIR/bin/activate"
-echo "  python $PYTHON_DIR/examples/main.py"
+echo "  python $PYTHON_DIR/examples/step_by_step/main.py"
+echo "  python $PYTHON_DIR/examples/batch/main.py"

@@ -76,10 +76,9 @@ pub async fn push_session_grid(
             }
 
             // Get session and SRID
-            let srid_result = sessions
-                .lock()
-                .ok()
-                .and_then(|mut guard| guard.with_session_mut(&sid, |session| session.get_world_srid()));
+            let srid_result = sessions.lock().ok().and_then(|mut guard| {
+                guard.with_session_mut(&sid, |session| session.get_world_srid())
+            });
 
             let srid = match srid_result {
                 Some(s) => s,
@@ -118,14 +117,11 @@ pub async fn push_session_grid(
                 .collect();
 
             // Add cells to session
-            let add_result = sessions
-                .lock()
-                .ok()
-                .and_then(|mut guard| {
-                    guard.with_session_mut(&sid, |session| {
-                        session.add_cells(cells_data);
-                    })
-                });
+            let add_result = sessions.lock().ok().and_then(|mut guard| {
+                guard.with_session_mut(&sid, |session| {
+                    session.add_cells(cells_data);
+                })
+            });
 
             if add_result.is_none() {
                 // Session disappeared between SRID fetch and add - rare but possible

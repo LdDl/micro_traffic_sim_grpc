@@ -45,7 +45,23 @@ from .step_pb2 import (
     TLGroup,
     AgentType,
 )
+from .record_pb2 import (
+    RunAndRecordRequest,
+    RunAndRecordResponse,
+    RecordFilter,
+    RunMetadata,
+    ColumnSchema,
+    ColumnDef,
+    RecordBatch,
+    RunSummary,
+    RecordingState,
+    RecordingStatusRequest,
+    RecordingStatusResponse,
+    StopRecordingRequest,
+    StopRecordingResponse,
+)
 from .service_pb2_grpc import ServiceStub
+from .record_decode import decode_record_batch
 
 __all__ = [
     # UUID
@@ -85,8 +101,24 @@ __all__ = [
     "TLSState",
     "TLGroup",
     "AgentType",
+    # Record
+    "RunAndRecordRequest",
+    "RunAndRecordResponse",
+    "RecordFilter",
+    "RunMetadata",
+    "ColumnSchema",
+    "ColumnDef",
+    "RecordBatch",
+    "RunSummary",
+    "RecordingState",
+    "RecordingStatusRequest",
+    "RecordingStatusResponse",
+    "StopRecordingRequest",
+    "StopRecordingResponse",
     # Service
     "ServiceStub",
+    # Record decode
+    "decode_record_batch",
 ]
 
 __version__ = "0.0.1"

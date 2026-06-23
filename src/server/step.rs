@@ -38,7 +38,9 @@ pub async fn simulation_step_session(
                 Some(id) => &id.value,
                 None => {
                     let _ = tx
-                        .send(Err(Status::invalid_argument("No session ID has been provided")))
+                        .send(Err(Status::invalid_argument(
+                            "No session ID has been provided",
+                        )))
                         .await;
                     return;
                 }
@@ -61,9 +63,7 @@ pub async fn simulation_step_session(
             // Get session and run step (use block scope to ensure lock is dropped before await)
             let step_result = {
                 let mut sessions_guard = sessions.lock().unwrap();
-                sessions_guard.with_session_mut(&session_uuid, |session| {
-                    session.step()
-                })
+                sessions_guard.with_session_mut(&session_uuid, |session| session.step())
             };
 
             let dump = match step_result {
@@ -77,9 +77,7 @@ pub async fn simulation_step_session(
                     return;
                 }
                 Some(Err(e)) => {
-                    let _ = tx
-                        .send(Err(Status::aborted(e.to_string())))
-                        .await;
+                    let _ = tx.send(Err(Status::aborted(e.to_string()))).await;
                     return;
                 }
                 Some(Ok(state)) => state,

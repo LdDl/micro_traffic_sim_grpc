@@ -26,6 +26,9 @@ const (
 	Service_SimulationStepSession_FullMethodName    = "/micro_traffic_sim.Service/SimulationStepSession"
 	Service_PushSessionTLS_FullMethodName           = "/micro_traffic_sim.Service/PushSessionTLS"
 	Service_PushSessionConflictZones_FullMethodName = "/micro_traffic_sim.Service/PushSessionConflictZones"
+	Service_RunAndRecord_FullMethodName             = "/micro_traffic_sim.Service/RunAndRecord"
+	Service_RecordingStatus_FullMethodName          = "/micro_traffic_sim.Service/RecordingStatus"
+	Service_StopRecording_FullMethodName            = "/micro_traffic_sim.Service/StopRecording"
 )
 
 // ServiceClient is the client API for Service service.
@@ -46,6 +49,13 @@ type ServiceClient interface {
 	PushSessionTLS(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SessionTLS, SessionTLSResponse], error)
 	// Set conflict zones for the given session (bidirectional streaming)
 	PushSessionConflictZones(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SessionConflictZones, SessionConflictZonesResponse], error)
+	// Run the session forward headless (no per-tick round-trip) and stream
+	// recorded trajectory batches for offline Parquet assembly + windowed replay.
+	RunAndRecord(ctx context.Context, in *RunAndRecordRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RunAndRecordResponse], error)
+	// Poll the progress/state of a running recording by session id (from any connection).
+	RecordingStatus(ctx context.Context, in *RecordingStatusRequest, opts ...grpc.CallOption) (*RecordingStatusResponse, error)
+	// Request a running recording to stop (cooperative), by session id (from any connection).
+	StopRecording(ctx context.Context, in *StopRecordingRequest, opts ...grpc.CallOption) (*StopRecordingResponse, error)
 }
 
 type serviceClient struct {
@@ -141,6 +151,45 @@ func (c *serviceClient) PushSessionConflictZones(ctx context.Context, opts ...gr
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Service_PushSessionConflictZonesClient = grpc.BidiStreamingClient[SessionConflictZones, SessionConflictZonesResponse]
 
+func (c *serviceClient) RunAndRecord(ctx context.Context, in *RunAndRecordRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RunAndRecordResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Service_ServiceDesc.Streams[5], Service_RunAndRecord_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RunAndRecordRequest, RunAndRecordResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Service_RunAndRecordClient = grpc.ServerStreamingClient[RunAndRecordResponse]
+
+func (c *serviceClient) RecordingStatus(ctx context.Context, in *RecordingStatusRequest, opts ...grpc.CallOption) (*RecordingStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordingStatusResponse)
+	err := c.cc.Invoke(ctx, Service_RecordingStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *serviceClient) StopRecording(ctx context.Context, in *StopRecordingRequest, opts ...grpc.CallOption) (*StopRecordingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StopRecordingResponse)
+	err := c.cc.Invoke(ctx, Service_StopRecording_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServiceServer is the server API for Service service.
 // All implementations must embed UnimplementedServiceServer
 // for forward compatibility.
@@ -159,6 +208,13 @@ type ServiceServer interface {
 	PushSessionTLS(grpc.BidiStreamingServer[SessionTLS, SessionTLSResponse]) error
 	// Set conflict zones for the given session (bidirectional streaming)
 	PushSessionConflictZones(grpc.BidiStreamingServer[SessionConflictZones, SessionConflictZonesResponse]) error
+	// Run the session forward headless (no per-tick round-trip) and stream
+	// recorded trajectory batches for offline Parquet assembly + windowed replay.
+	RunAndRecord(*RunAndRecordRequest, grpc.ServerStreamingServer[RunAndRecordResponse]) error
+	// Poll the progress/state of a running recording by session id (from any connection).
+	RecordingStatus(context.Context, *RecordingStatusRequest) (*RecordingStatusResponse, error)
+	// Request a running recording to stop (cooperative), by session id (from any connection).
+	StopRecording(context.Context, *StopRecordingRequest) (*StopRecordingResponse, error)
 	mustEmbedUnimplementedServiceServer()
 }
 
@@ -189,6 +245,15 @@ func (UnimplementedServiceServer) PushSessionTLS(grpc.BidiStreamingServer[Sessio
 }
 func (UnimplementedServiceServer) PushSessionConflictZones(grpc.BidiStreamingServer[SessionConflictZones, SessionConflictZonesResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method PushSessionConflictZones not implemented")
+}
+func (UnimplementedServiceServer) RunAndRecord(*RunAndRecordRequest, grpc.ServerStreamingServer[RunAndRecordResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method RunAndRecord not implemented")
+}
+func (UnimplementedServiceServer) RecordingStatus(context.Context, *RecordingStatusRequest) (*RecordingStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RecordingStatus not implemented")
+}
+func (UnimplementedServiceServer) StopRecording(context.Context, *StopRecordingRequest) (*StopRecordingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopRecording not implemented")
 }
 func (UnimplementedServiceServer) mustEmbedUnimplementedServiceServer() {}
 func (UnimplementedServiceServer) testEmbeddedByValue()                 {}
@@ -282,6 +347,53 @@ func _Service_PushSessionConflictZones_Handler(srv interface{}, stream grpc.Serv
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Service_PushSessionConflictZonesServer = grpc.BidiStreamingServer[SessionConflictZones, SessionConflictZonesResponse]
 
+func _Service_RunAndRecord_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RunAndRecordRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ServiceServer).RunAndRecord(m, &grpc.GenericServerStream[RunAndRecordRequest, RunAndRecordResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Service_RunAndRecordServer = grpc.ServerStreamingServer[RunAndRecordResponse]
+
+func _Service_RecordingStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordingStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).RecordingStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Service_RecordingStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).RecordingStatus(ctx, req.(*RecordingStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Service_StopRecording_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopRecordingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).StopRecording(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Service_StopRecording_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).StopRecording(ctx, req.(*StopRecordingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Service_ServiceDesc is the grpc.ServiceDesc for Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -296,6 +408,14 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InfoSession",
 			Handler:    _Service_InfoSession_Handler,
+		},
+		{
+			MethodName: "RecordingStatus",
+			Handler:    _Service_RecordingStatus_Handler,
+		},
+		{
+			MethodName: "StopRecording",
+			Handler:    _Service_StopRecording_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -328,6 +448,11 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _Service_PushSessionConflictZones_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "RunAndRecord",
+			Handler:       _Service_RunAndRecord_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "service.proto",

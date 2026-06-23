@@ -9,6 +9,7 @@ import "trip.proto";
 import "step.proto";
 import "tls.proto";
 import "conflict_zones.proto";
+import "record.proto";
 
 service Service {
     // Create a new computation session
@@ -25,4 +26,11 @@ service Service {
     rpc PushSessionTLS (stream SessionTLS) returns (stream SessionTLSResponse) {}
     // Set conflict zones for the given session (bidirectional streaming)
     rpc PushSessionConflictZones (stream SessionConflictZones) returns (stream SessionConflictZonesResponse) {}
+    // Run the session forward headless (no per-tick round-trip) and stream
+    // recorded trajectory batches for offline Parquet assembly + windowed replay.
+    rpc RunAndRecord (RunAndRecordRequest) returns (stream RunAndRecordResponse) {}
+    // Poll the progress/state of a running recording by session id (from any connection).
+    rpc RecordingStatus (RecordingStatusRequest) returns (RecordingStatusResponse) {}
+    // Request a running recording to stop (cooperative), by session id (from any connection).
+    rpc StopRecording (StopRecordingRequest) returns (StopRecordingResponse) {}
 }
