@@ -199,8 +199,8 @@ message RunSummary {
     int32 vehicles_lost = 5;
 }
 
-// Observe and control a running recording by session id, out-of-band: both work
-// from any connection, not only the one running the matching RunAndRecord stream.
+// Observe and control a running recording by session id. Both work from any
+// connection, not only the one running the matching RunAndRecord stream.
 
 // State of a recording for a given session id.
 enum RecordingState {

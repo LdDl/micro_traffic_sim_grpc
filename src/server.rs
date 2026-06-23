@@ -92,6 +92,20 @@ impl pb::service_server::Service for SimService {
     ) -> Result<Response<Self::RunAndRecordStream>, Status> {
         record::run_and_record(self.sessions.clone(), self.recordings.clone(), request).await
     }
+
+    async fn recording_status(
+        &self,
+        request: Request<pb::RecordingStatusRequest>,
+    ) -> Result<Response<pb::RecordingStatusResponse>, Status> {
+        recordings::recording_status(self.recordings.clone(), request).await
+    }
+
+    async fn stop_recording(
+        &self,
+        request: Request<pb::StopRecordingRequest>,
+    ) -> Result<Response<pb::StopRecordingResponse>, Status> {
+        recordings::stop_recording(self.recordings.clone(), request).await
+    }
 }
 
 fn spawn_purge_task(sessions: Arc<Mutex<SessionsStorage>>) {
