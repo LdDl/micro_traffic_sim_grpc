@@ -221,6 +221,11 @@ def main() -> None:
         ),
     ]
 
+    tls_group_cells: dict[tuple[int, int], list[int]] = {}
+    for tl in traffic_lights:
+        for group in tl.groups:
+            tls_group_cells[(tl.id, group.id)] = list(group.cells)
+
     def tls_requests() -> Iterator[SessionTLS]:
         yield SessionTLS(
             session_id=UUIDv4(value=session_id),
@@ -299,6 +304,9 @@ def main() -> None:
             rx, ry = cell_coords[cd.right_node]
             print(f"{cd.id};{cd.x:.5f};{cd.y:.5f};{rx:.5f};{ry:.5f};right;common")
 
+    print("\n=== Running 50 simulation steps ===\n")
+
+    tls_rows: list[str] = []
     print("step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id")
     request = RunAndRecordRequest(
         session_id=UUIDv4(value=session_id),
@@ -316,7 +324,7 @@ def main() -> None:
                 file=sys.stderr,
             )
         elif which == "batch":
-            decode_batch(resp.batch.columns, cell_coords)
+            tls_rows.extend(decode_batch(resp.batch.columns, cell_coords, tls_group_cells))
         elif which == "summary":
             s = resp.summary
             print(
@@ -326,11 +334,17 @@ def main() -> None:
             )
 
     print("tl_step;tl_id;group_id;cell_id;x;y;signal")
+    for row in tls_rows:
+        print(row)
 
-    print("done", file=sys.stderr)
+    print("\nSimulation complete!")
 
 
-def decode_batch(blob: bytes, cell_coords: dict[int, tuple[float, float]]) -> None:
+def decode_batch(
+    blob: bytes,
+    cell_coords: dict[int, tuple[float, float]],
+    tls_group_cells: dict[tuple[int, int], list[int]],
+) -> list[str]:
     o = 0
 
     def rd(fmt: str, size: int):
@@ -357,6 +371,11 @@ def decode_batch(blob: bytes, cell_coords: dict[int, tuple[float, float]]) -> No
     tail_off = [rd("<I", 4) for _ in range(r)]
     tail_vals = [rd("<I", 4) for _ in range(tail_off[-1] if r else 0)]
 
+    g_count = rd("<I", 4)
+    tl_keys = [(rd("<I", 4), rd("<I", 4)) for _ in range(g_count)]
+    tl_signals = blob[o:o + tick_count * g_count]
+    o += tick_count * g_count
+
     vtypes = {1: "car", 2: "bus", 3: "taxi", 4: "pedestrian", 5: "truck", 6: "large_bus"}
 
     def sl(off: list[int], vals: list[int], row: int) -> str:
@@ -375,6 +394,19 @@ def decode_batch(blob: bytes, cell_coords: dict[int, tuple[float, float]]) -> No
                 f"{sl(tail_off, tail_vals, row)};{trip[row]}"
             )
             row += 1
+
+    sigstr = {1: "r", 2: "y", 3: "g", 4: "G", 5: "s", 6: "u", 7: "o", 8: "O"}
+    tls_rows: list[str] = []
+    for t in range(tick_count):
+        step = tick_start + t
+        for gi in range(g_count):
+            tl_id, group_id = tl_keys[gi]
+            sig = sigstr.get(tl_signals[t * g_count + gi], "undefined")
+            for cell_id in tls_group_cells.get((tl_id, group_id), []):
+                if cell_id in cell_coords:
+                    x, y = cell_coords[cell_id]
+                    tls_rows.append(f"{step};{tl_id};{group_id};{cell_id};{x:.5f};{y:.5f};{sig}")
+    return tls_rows
 
 
 if __name__ == "__main__":

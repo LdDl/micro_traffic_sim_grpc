@@ -249,6 +249,13 @@ func main() {
 		},
 	}
 
+	tlsGroupCells := make(map[[2]int64][]int64)
+	for _, tl := range tls {
+		for _, group := range tl.Groups {
+			tlsGroupCells[[2]int64{tl.Id, group.Id}] = group.Cells
+		}
+	}
+
 	tlsStream, err := cli.PushSessionTLS(ctx)
 	if err != nil {
 		panic(err)
@@ -400,6 +407,9 @@ func main() {
 		panic(err)
 	}
 
+	fmt.Print("\n=== Running 50 simulation steps ===\n\n")
+
+	var tlsRows []string
 	fmt.Println("step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id")
 	for {
 		resp, err := stream.Recv()
@@ -419,7 +429,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "format_version=%d tick_seconds=%g spawn_seed=%d stochastic_seed=%d columns=[%s]\n",
 				m.FormatVersion, m.TickSeconds, m.SpawnSeed, m.StochasticSeed, strings.Join(cols, ","))
 		} else if b := resp.GetBatch(); b != nil {
-			decodeBatch(b.Columns, cellCoords)
+			tlsRows = append(tlsRows, decodeBatch(b.Columns, cellCoords, tlsGroupCells)...)
 		} else if s := resp.GetSummary(); s != nil {
 			fmt.Fprintf(os.Stderr, "ticks=%d rows=%d raw_bytes=%d completed=%d lost=%d\n",
 				s.TotalTicks, s.TotalRows, s.TotalBytes, s.VehiclesCompleted, s.VehiclesLost)
@@ -427,11 +437,14 @@ func main() {
 	}
 
 	fmt.Println("tl_step;tl_id;group_id;cell_id;x;y;signal")
+	for _, row := range tlsRows {
+		fmt.Println(row)
+	}
 
-	fmt.Fprintln(os.Stderr, "done")
+	fmt.Println("\nSimulation complete!")
 }
 
-func decodeBatch(blob []byte, cellCoords map[int64][2]float64) {
+func decodeBatch(blob []byte, cellCoords map[int64][2]float64, tlsGroupCells map[[2]int64][]int64) []string {
 	o := 0
 	rdU32 := func() uint32 { v := binary.LittleEndian.Uint32(blob[o : o+4]); o += 4; return v }
 	rdU16 := func() uint16 { v := binary.LittleEndian.Uint16(blob[o : o+2]); o += 2; return v }
@@ -493,6 +506,15 @@ func decodeBatch(blob []byte, cellCoords map[int64][2]float64) {
 		tailVals[i] = rdU32()
 	}
 
+	gCount := int(rdU32())
+	tlKeys := make([][2]uint32, gCount)
+	for i := range tlKeys {
+		tlKeys[i] = [2]uint32{rdU32(), rdU32()}
+	}
+	tlSignals := blob[o : o+tickCount*gCount]
+	o += tickCount * gCount
+	_ = o
+
 	vtype := func(t byte) string {
 		switch t {
 		case 1:
@@ -538,4 +560,45 @@ func decodeBatch(blob []byte, cellCoords map[int64][2]float64) {
 			row++
 		}
 	}
+
+	sigstr := func(c byte) string {
+		switch c {
+		case 1:
+			return "r"
+		case 2:
+			return "y"
+		case 3:
+			return "g"
+		case 4:
+			return "G"
+		case 5:
+			return "s"
+		case 6:
+			return "u"
+		case 7:
+			return "o"
+		case 8:
+			return "O"
+		default:
+			return "undefined"
+		}
+	}
+	var tlsRows []string
+	for t := 0; t < tickCount; t++ {
+		step := tickStart + t
+		for gi := 0; gi < gCount; gi++ {
+			tlID := int64(tlKeys[gi][0])
+			groupID := int64(tlKeys[gi][1])
+			sig := sigstr(tlSignals[t*gCount+gi])
+			if cells, ok := tlsGroupCells[[2]int64{tlID, groupID}]; ok {
+				for _, cellID := range cells {
+					if xy, ok := cellCoords[cellID]; ok {
+						tlsRows = append(tlsRows, fmt.Sprintf("%d;%d;%d;%d;%.5f;%.5f;%s",
+							step, tlID, groupID, cellID, xy[0], xy[1], sig))
+					}
+				}
+			}
+		}
+	}
+	return tlsRows
 }

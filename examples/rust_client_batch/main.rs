@@ -18,7 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let channel = Channel::from_shared(addr)?.connect().await?;
     let mut client = ServiceClient::new(channel);
 
-    let resp = client.new_session(pb::SessionReq { srid: 0 }).await?.into_inner();
+    let resp = client
+        .new_session(pb::SessionReq { srid: 0 })
+        .await?
+        .into_inner();
     let sid = resp
         .id
         .as_ref()
@@ -43,7 +46,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ZONE_COMMON
         };
         let forward_node = if i < 9 { i + 1 } else { -1 };
-        let left_node = if i == 3 { 14 } else if i == 6 { 24 } else { -1 };
+        let left_node = if i == 3 {
+            14
+        } else if i == 6 {
+            24
+        } else {
+            -1
+        };
 
         let x = i as f64;
         let y = 3.5;
@@ -143,7 +152,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         data: conflict_zones,
     };
     let cz_stream = tokio_stream::once(cz_request);
-    let mut cz_response = client.push_session_conflict_zones(cz_stream).await?.into_inner();
+    let mut cz_response = client
+        .push_session_conflict_zones(cz_stream)
+        .await?
+        .into_inner();
     while let Some(resp) = cz_response.next().await {
         let resp = resp?;
         eprintln!("conflict zones push: code={} text={}", resp.code, resp.text);
@@ -177,6 +189,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         times: vec![5, 5],
         signals_kinds: vec![],
     }];
+
+    let mut tls_group_cells: HashMap<(i64, i64), Vec<i64>> = HashMap::new();
+    for tl in &tls {
+        for group in &tl.groups {
+            tls_group_cells.insert((tl.id, group.id), group.cells.clone());
+        }
+    }
 
     let tls_request = pb::SessionTls {
         session_id: Some(pb::UuiDv4 { value: sid.clone() }),
@@ -282,12 +301,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("cell_id;x;y;forward_x;forward_y;connection_type;zone");
     for &(id, x, y, _, _, _, zone) in &cell_data {
-        println!("{};{:.5};{:.5};{:.5};{:.5};cell;{}", id, x, y, x, y, zone_str(zone));
+        println!(
+            "{};{:.5};{:.5};{:.5};{:.5};cell;{}",
+            id,
+            x,
+            y,
+            x,
+            y,
+            zone_str(zone)
+        );
     }
     for &(id, x, y, fwd, left, right, _) in &cell_data {
         if fwd != -1 {
             if let Some(&(fx, fy)) = cell_coords.get(&fwd) {
-                println!("{};{:.5};{:.5};{:.5};{:.5};forward;common", id, x, y, fx, fy);
+                println!(
+                    "{};{:.5};{:.5};{:.5};{:.5};forward;common",
+                    id, x, y, fx, fy
+                );
             }
         }
         if left != -1 {
@@ -310,13 +340,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut stream = client.run_and_record(rr_req).await?.into_inner();
 
-    println!("step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id");
+    println!("\n=== Running 50 simulation steps ===\n");
+
+    let mut tls_rows: Vec<String> = Vec::new();
+    println!(
+        "step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id"
+    );
     while let Some(resp) = stream.next().await {
         match resp?.payload {
             Some(pb::run_and_record_response::Payload::Metadata(m)) => {
                 let cols = m
                     .schema
-                    .map(|s| s.columns.into_iter().map(|c| c.name).collect::<Vec<_>>().join(","))
+                    .map(|s| {
+                        s.columns
+                            .into_iter()
+                            .map(|c| c.name)
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    })
                     .unwrap_or_default();
                 eprintln!(
                     "format_version={} tick_seconds={} spawn_seed={} stochastic_seed={} columns=[{}]",
@@ -324,12 +365,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Some(pb::run_and_record_response::Payload::Batch(b)) => {
-                decode_batch(&b.columns, &cell_coords);
+                decode_batch(&b.columns, &cell_coords, &tls_group_cells, &mut tls_rows);
             }
             Some(pb::run_and_record_response::Payload::Summary(s)) => {
                 eprintln!(
                     "ticks={} rows={} raw_bytes={} completed={} lost={}",
-                    s.total_ticks, s.total_rows, s.total_bytes, s.vehicles_completed, s.vehicles_lost
+                    s.total_ticks,
+                    s.total_rows,
+                    s.total_bytes,
+                    s.vehicles_completed,
+                    s.vehicles_lost
                 );
             }
             None => {}
@@ -337,12 +382,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("tl_step;tl_id;group_id;cell_id;x;y;signal");
+    for row in &tls_rows {
+        println!("{row}");
+    }
 
-    eprintln!("done");
+    println!("\nSimulation complete!");
     Ok(())
 }
 
-fn decode_batch(blob: &[u8], cell_coords: &HashMap<i64, (f64, f64)>) {
+fn decode_batch(
+    blob: &[u8],
+    cell_coords: &HashMap<i64, (f64, f64)>,
+    tls_group_cells: &HashMap<(i64, i64), Vec<i64>>,
+    tls_rows: &mut Vec<String>,
+) {
     let rd_u32 = |b: &[u8], o: &mut usize| -> u32 {
         let v = u32::from_le_bytes(b[*o..*o + 4].try_into().unwrap());
         *o += 4;
@@ -365,7 +418,9 @@ fn decode_batch(blob: &[u8], cell_coords: &HashMap<i64, (f64, f64)>) {
     let tick_count = rd_u32(blob, &mut o) as usize;
     let r = rd_u32(blob, &mut o) as usize;
 
-    let rows_per_tick: Vec<usize> = (0..tick_count).map(|_| rd_u32(blob, &mut o) as usize).collect();
+    let rows_per_tick: Vec<usize> = (0..tick_count)
+        .map(|_| rd_u32(blob, &mut o) as usize)
+        .collect();
     let veh_id: Vec<u32> = (0..r).map(|_| rd_u32(blob, &mut o)).collect();
     let cell: Vec<u32> = (0..r).map(|_| rd_u32(blob, &mut o)).collect();
     let agent_type = blob[o..o + r].to_vec();
@@ -380,6 +435,14 @@ fn decode_batch(blob: &[u8], cell_coords: &HashMap<i64, (f64, f64)>) {
     let tail_total = tail_off.last().copied().unwrap_or(0);
     let tail_vals: Vec<u32> = (0..tail_total).map(|_| rd_u32(blob, &mut o)).collect();
 
+    let g_count = rd_u32(blob, &mut o) as usize;
+    let tl_keys: Vec<(u32, u32)> = (0..g_count)
+        .map(|_| (rd_u32(blob, &mut o), rd_u32(blob, &mut o)))
+        .collect();
+    let tl_signals = blob[o..o + tick_count * g_count].to_vec();
+    o += tick_count * g_count;
+    debug_assert_eq!(o, blob.len());
+
     let vtype = |t: u8| match t {
         1 => "car",
         2 => "bus",
@@ -391,7 +454,11 @@ fn decode_batch(blob: &[u8], cell_coords: &HashMap<i64, (f64, f64)>) {
     };
     let slice = |off: &[usize], vals: &[u32], row: usize| -> String {
         let start = if row == 0 { 0 } else { off[row - 1] };
-        vals[start..off[row]].iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",")
+        vals[start..off[row]]
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
     };
 
     let mut row = 0usize;
@@ -415,6 +482,36 @@ fn decode_batch(blob: &[u8], cell_coords: &HashMap<i64, (f64, f64)>) {
                 trip[row],
             );
             row += 1;
+        }
+    }
+
+    let sigstr = |c: u8| match c {
+        1 => "r",
+        2 => "y",
+        3 => "g",
+        4 => "G",
+        5 => "s",
+        6 => "u",
+        7 => "o",
+        8 => "O",
+        _ => "undefined",
+    };
+    for t in 0..tick_count {
+        let step = tick_start as usize + t;
+        for gi in 0..g_count {
+            let tl_id = tl_keys[gi].0 as i64;
+            let group_id = tl_keys[gi].1 as i64;
+            let sig = sigstr(tl_signals[t * g_count + gi]);
+            if let Some(cells) = tls_group_cells.get(&(tl_id, group_id)) {
+                for &cell_id in cells {
+                    if let Some(&(x, y)) = cell_coords.get(&cell_id) {
+                        tls_rows.push(format!(
+                            "{};{};{};{};{:.5};{:.5};{}",
+                            step, tl_id, group_id, cell_id, x, y, sig
+                        ));
+                    }
+                }
+            }
         }
     }
 }

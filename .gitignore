@@ -18,6 +18,12 @@ clients/python/examples/batch/output.txt
 clients/python/examples/batch/output.gif
 *.dat
 
+# Go example compiled binaries
+clients/go/cmd/example/main
+clients/go/cmd/example/example
+clients/go/cmd/example_batch/main
+clients/go/cmd/example_batch/example_batch
+
 # Python
 clients/python/.venv/
 __pycache__/
