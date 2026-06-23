@@ -123,12 +123,16 @@ mod tests {
 
     fn status_req(id: Uuid) -> Request<pb::RecordingStatusRequest> {
         Request::new(pb::RecordingStatusRequest {
-            session_id: Some(pb::UuiDv4 { value: id.to_string() }),
+            session_id: Some(pb::UuiDv4 {
+                value: id.to_string(),
+            }),
         })
     }
     fn stop_req(id: Uuid) -> Request<pb::StopRecordingRequest> {
         Request::new(pb::StopRecordingRequest {
-            session_id: Some(pb::UuiDv4 { value: id.to_string() }),
+            session_id: Some(pb::UuiDv4 {
+                value: id.to_string(),
+            }),
         })
     }
 
@@ -138,9 +142,15 @@ mod tests {
         let id = Uuid::new_v4();
 
         // Nothing running yet.
-        let r = recording_status(reg.clone(), status_req(id)).await.unwrap().into_inner();
+        let r = recording_status(reg.clone(), status_req(id))
+            .await
+            .unwrap()
+            .into_inner();
         assert_eq!(r.state, pb::RecordingState::NotRunning as i32);
-        let s = stop_recording(reg.clone(), stop_req(id)).await.unwrap().into_inner();
+        let s = stop_recording(reg.clone(), stop_req(id))
+            .await
+            .unwrap()
+            .into_inner();
         assert!(!s.accepted, "stop on a non-running recording is a no-op");
 
         // Register a running recording with some progress.
@@ -150,17 +160,26 @@ mod tests {
         reg.lock().unwrap().insert(id, handle.clone());
 
         // Status reports it.
-        let r = recording_status(reg.clone(), status_req(id)).await.unwrap().into_inner();
+        let r = recording_status(reg.clone(), status_req(id))
+            .await
+            .unwrap()
+            .into_inner();
         assert_eq!(r.state, pb::RecordingState::Running as i32);
         assert_eq!(r.current_tick, 42);
         assert_eq!(r.rows, 100);
         assert!(!r.cancel_requested);
 
         // Stop sets the cancel flag, which the handler would observe.
-        let s = stop_recording(reg.clone(), stop_req(id)).await.unwrap().into_inner();
+        let s = stop_recording(reg.clone(), stop_req(id))
+            .await
+            .unwrap()
+            .into_inner();
         assert!(s.accepted);
         assert!(handle.cancel.load(Ordering::Relaxed));
-        let r = recording_status(reg.clone(), status_req(id)).await.unwrap().into_inner();
+        let r = recording_status(reg.clone(), status_req(id))
+            .await
+            .unwrap()
+            .into_inner();
         assert!(r.cancel_requested);
     }
 }

@@ -60,7 +60,9 @@ pub async fn push_session_trip(
                 Some(id) => &id.value,
                 None => {
                     let _ = tx
-                        .send(Err(Status::invalid_argument("No session ID has been provided")))
+                        .send(Err(Status::invalid_argument(
+                            "No session ID has been provided",
+                        )))
                         .await;
                     return;
                 }
@@ -92,9 +94,7 @@ pub async fn push_session_trip(
             }
 
             if req.data.is_empty() {
-                let _ = tx
-                    .send(Err(Status::invalid_argument("No data")))
-                    .await;
+                let _ = tx.send(Err(Status::invalid_argument("No data"))).await;
                 return;
             }
 
@@ -112,19 +112,21 @@ pub async fn push_session_trip(
                         let transits: Vec<i64> = trip_data.transits.clone();
 
                         // Build trip using the builder pattern
-                        let mut trip_builder = Trip::new(trip_data.from_node, trip_data.to_node, trip_type)
-                            .with_id(trip_data.id)
-                            .with_initial_speed(trip_data.initial_speed as i32)
-                            .with_probability(trip_data.probability)
-                            .with_allowed_agent_type(agent_type)
-                            .with_allowed_behaviour_type(behaviour_type)
-                            .with_time(trip_data.time as i32)
-                            .with_start_time(trip_data.start_time as i32)
-                            .with_end_time(trip_data.end_time as i32);
+                        let mut trip_builder =
+                            Trip::new(trip_data.from_node, trip_data.to_node, trip_type)
+                                .with_id(trip_data.id)
+                                .with_initial_speed(trip_data.initial_speed as i32)
+                                .with_probability(trip_data.probability)
+                                .with_allowed_agent_type(agent_type)
+                                .with_allowed_behaviour_type(behaviour_type)
+                                .with_time(trip_data.time as i32)
+                                .with_start_time(trip_data.start_time as i32)
+                                .with_end_time(trip_data.end_time as i32);
 
                         // Set transits if any
                         if !transits.is_empty() {
-                            trip_builder = trip_builder.with_transits_cells(transits, trip_data.relax_time as i32);
+                            trip_builder = trip_builder
+                                .with_transits_cells(transits, trip_data.relax_time as i32);
                         }
 
                         let trip = trip_builder.build();

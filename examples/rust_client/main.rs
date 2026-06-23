@@ -17,9 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Connect
-    let channel = Channel::from_shared(addr.clone())?
-        .connect()
-        .await?;
+    let channel = Channel::from_shared(addr.clone())?.connect().await?;
     let mut client = ServiceClient::new(channel);
 
     // ==============================================================
@@ -68,7 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ZONE_COMMON
         };
         let forward_node = if i < 9 { i + 1 } else { -1 };
-        let left_node = if i == 3 { 14 } else if i == 6 { 24 } else { -1 };
+        let left_node = if i == 3 {
+            14
+        } else if i == 6 {
+            24
+        } else {
+            -1
+        };
 
         let x = i as f64;
         let y = 3.5;
@@ -161,10 +165,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ==============================================================
     let conflict_zones = vec![pb::ConflictZone {
         id: 1,
-        source_x: 3,  // H cell before intersection
-        target_x: 4,  // H cell after intersection
-        source_y: 13, // V1 cell before intersection
-        target_y: 14, // V1 cell after intersection
+        source_x: 3,        // H cell before intersection
+        target_x: 4,        // H cell after intersection
+        source_y: 13,       // V1 cell before intersection
+        target_y: 14,       // V1 cell after intersection
         conflict_winner: 3, // CONFLICT_WINNER_SECOND = V1 has priority
         conflict_type: 0,   // CONFLICT_ZONE_TYPE_UNDEFINED
     }];
@@ -174,10 +178,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         data: conflict_zones,
     };
     let cz_stream = tokio_stream::once(cz_request);
-    let mut cz_response = client.push_session_conflict_zones(cz_stream).await?.into_inner();
+    let mut cz_response = client
+        .push_session_conflict_zones(cz_stream)
+        .await?
+        .into_inner();
     while let Some(resp) = cz_response.next().await {
         let resp = resp?;
-        println!("Conflict zones push response: code={} text={}", resp.code, resp.text);
+        println!(
+            "Conflict zones push response: code={} text={}",
+            resp.code, resp.text
+        );
     }
 
     // ==============================================================
@@ -240,12 +250,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pb::Trip {
             id: 1,
             trip_type: 2, // TRIP_TYPE_RANDOM
-            from_node: 1,  // H birth (but we use cell 1 since 0 is occupied)
-            to_node: 9,    // H death
+            from_node: 1, // H birth (but we use cell 1 since 0 is occupied)
+            to_node: 9,   // H death
             initial_speed: 1,
             probability: 0.2,
-            agent_type: 1,        // AGENT_TYPE_CAR
-            behaviour_type: 3,    // BEHAVIOUR_TYPE_COOPERATIVE
+            agent_type: 1,     // AGENT_TYPE_CAR
+            behaviour_type: 3, // BEHAVIOUR_TYPE_COOPERATIVE
             time: 0,
             start_time: 0,
             end_time: 0,
@@ -254,13 +264,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         pb::Trip {
             id: 2,
-            trip_type: 2, // TRIP_TYPE_RANDOM
+            trip_type: 2,  // TRIP_TYPE_RANDOM
             from_node: 10, // V1 birth
             to_node: 19,   // V1 death
             initial_speed: 1,
             probability: 0.3,
-            agent_type: 1,        // AGENT_TYPE_CAR
-            behaviour_type: 3,    // BEHAVIOUR_TYPE_COOPERATIVE
+            agent_type: 1,     // AGENT_TYPE_CAR
+            behaviour_type: 3, // BEHAVIOUR_TYPE_COOPERATIVE
             time: 0,
             start_time: 0,
             end_time: 0,
@@ -269,13 +279,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         pb::Trip {
             id: 3,
-            trip_type: 2, // TRIP_TYPE_RANDOM
+            trip_type: 2,  // TRIP_TYPE_RANDOM
             from_node: 20, // V2 birth
             to_node: 29,   // V2 death
             initial_speed: 1,
             probability: 0.1,
-            agent_type: 1,        // AGENT_TYPE_CAR
-            behaviour_type: 3,    // BEHAVIOUR_TYPE_COOPERATIVE
+            agent_type: 1,     // AGENT_TYPE_CAR
+            behaviour_type: 3, // BEHAVIOUR_TYPE_COOPERATIVE
             time: 0,
             start_time: 0,
             end_time: 0,
@@ -337,13 +347,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cell_id;x;y;forward_x;forward_y;connection_type;zone");
     // First print all cells (for gnuplot to show them even without connections)
     for &(id, x, y, _, _, _, zone) in &cell_data {
-        println!("{};{:.5};{:.5};{:.5};{:.5};cell;{}", id, x, y, x, y, zone_str(zone));
+        println!(
+            "{};{:.5};{:.5};{:.5};{:.5};cell;{}",
+            id,
+            x,
+            y,
+            x,
+            y,
+            zone_str(zone)
+        );
     }
     // Then print connections (arrows)
     for &(id, x, y, fwd, left, right, _) in &cell_data {
         if fwd != -1 {
             if let Some(&(fx, fy)) = cell_coords.get(&fwd) {
-                println!("{};{:.5};{:.5};{:.5};{:.5};forward;common", id, x, y, fx, fy);
+                println!(
+                    "{};{:.5};{:.5};{:.5};{:.5};forward;common",
+                    id, x, y, fx, fy
+                );
             }
         }
         if left != -1 {
@@ -365,7 +386,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Running {} simulation steps ===\n", steps_num);
 
     // Collect states for printing at the end
-    let mut vehicle_states: Vec<(i64, i64, &'static str, i64, f64, String, i64, f64, f64, String, i64)> = Vec::new();
+    let mut vehicle_states: Vec<(
+        i64,
+        i64,
+        &'static str,
+        i64,
+        f64,
+        String,
+        i64,
+        f64,
+        f64,
+        String,
+        i64,
+    )> = Vec::new();
     // TLS states: (step, tl_id, group_id, cell_id, x, y, signal)
     let mut tls_states: Vec<(i64, i64, i64, i64, f64, f64, String)> = Vec::new();
 
@@ -377,7 +410,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     let step_stream = tokio_stream::iter(step_requests);
-    let mut step_response = client.simulation_step_session(step_stream).await?.into_inner();
+    let mut step_response = client
+        .simulation_step_session(step_stream)
+        .await?
+        .into_inner();
 
     while let Some(resp) = step_response.next().await {
         let resp = resp?;
@@ -387,13 +423,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         for v in &resp.vehicle_data {
             // Position is resolved from the head cell via the static grid (the
             // server no longer sends a geographic Point per vehicle).
-            let (x, y) = cell_coords.get(&v.cell).copied().unwrap_or((f64::NAN, f64::NAN));
-            let intermediate_cells = v.intermediate_cells
+            let (x, y) = cell_coords
+                .get(&v.cell)
+                .copied()
+                .unwrap_or((f64::NAN, f64::NAN));
+            let intermediate_cells = v
+                .intermediate_cells
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<_>>()
                 .join(",");
-            let tail_cells = v.tail_cells
+            let tail_cells = v
+                .tail_cells
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<_>>()
@@ -427,7 +468,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(cells) = tls_group_cells.get(&(tls.id, group.id)) {
                     for &cell_id in cells {
                         let (x, y) = cell_coords.get(&cell_id).copied().unwrap_or((0.0, 0.0));
-                        tls_states.push((timestamp, tls.id, group.id, cell_id, x, y, group.signal.clone()));
+                        tls_states.push((
+                            timestamp,
+                            tls.id,
+                            group.id,
+                            cell_id,
+                            x,
+                            y,
+                            group.signal.clone(),
+                        ));
                     }
                 }
             }
@@ -435,18 +484,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Print vehicle states
-    println!("step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id");
-    for (step, vehicle_id, vehicle_type, speed, bearing, intermediate_cells, cell, x, y, tail_cells, trip_id) in &vehicle_states {
+    println!(
+        "step;vehicle_id;vehicle_type;speed;bearing;intermediate_cells;cell;x;y;tail_cells;trip_id"
+    );
+    for (
+        step,
+        vehicle_id,
+        vehicle_type,
+        speed,
+        bearing,
+        intermediate_cells,
+        cell,
+        x,
+        y,
+        tail_cells,
+        trip_id,
+    ) in &vehicle_states
+    {
         println!(
             "{};{};{};{};{:.2};{};{};{:.2};{:.2};{};{}",
-            step, vehicle_id, vehicle_type, speed, bearing, intermediate_cells, cell, x, y, tail_cells, trip_id
+            step,
+            vehicle_id,
+            vehicle_type,
+            speed,
+            bearing,
+            intermediate_cells,
+            cell,
+            x,
+            y,
+            tail_cells,
+            trip_id
         );
     }
 
     // Print TLS states
     println!("tl_step;tl_id;group_id;cell_id;x;y;signal");
     for (step, tl_id, group_id, cell_id, x, y, signal) in &tls_states {
-        println!("{};{};{};{};{:.5};{:.5};{}", step, tl_id, group_id, cell_id, x, y, signal);
+        println!(
+            "{};{};{};{};{:.5};{:.5};{}",
+            step, tl_id, group_id, cell_id, x, y, signal
+        );
     }
 
     println!("\nSimulation complete!");

@@ -43,7 +43,9 @@ pub async fn push_session_conflict_zones(
                 Some(id) => &id.value,
                 None => {
                     let _ = tx
-                        .send(Err(Status::invalid_argument("No session ID has been provided")))
+                        .send(Err(Status::invalid_argument(
+                            "No session ID has been provided",
+                        )))
                         .await;
                     return;
                 }
@@ -75,9 +77,7 @@ pub async fn push_session_conflict_zones(
             }
 
             if req.data.is_empty() {
-                let _ = tx
-                    .send(Err(Status::invalid_argument("No data")))
-                    .await;
+                let _ = tx.send(Err(Status::invalid_argument("No data"))).await;
                 return;
             }
 
@@ -99,10 +99,11 @@ pub async fn push_session_conflict_zones(
                         let winner_type = proto_winner_type_to_core(cz_data.conflict_winner);
                         let zone_type = proto_zone_type_to_core(cz_data.conflict_type);
 
-                        let conflict_zone = ConflictZone::new(cz_data.id as i32, first_edge, second_edge)
-                            .with_winner_type(winner_type)
-                            .with_zone_type(zone_type)
-                            .build();
+                        let conflict_zone =
+                            ConflictZone::new(cz_data.id as i32, first_edge, second_edge)
+                                .with_winner_type(winner_type)
+                                .with_zone_type(zone_type)
+                                .build();
 
                         session.add_conflict_zone(conflict_zone);
                     }

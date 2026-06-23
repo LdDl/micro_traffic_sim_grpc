@@ -25,14 +25,18 @@ pub async fn new_session(
     let sid = session.get_id();
 
     let ttl = Some(Duration::from_secs(4 * 60));
-    let mut guard = sessions.lock().map_err(|_| Status::internal("storage poisoned"))?;
+    let mut guard = sessions
+        .lock()
+        .map_err(|_| Status::internal("storage poisoned"))?;
     let _ = guard.register_session(sid, session, ttl);
     drop(guard);
 
     let resp = pb::NewSessionResponse {
         code: Code::Ok as u32,
         text: Code::Ok.to_string(),
-        id: Some(pb::UuiDv4 { value: sid.to_string() }),
+        id: Some(pb::UuiDv4 {
+            value: sid.to_string(),
+        }),
     };
     Ok(Response::new(resp))
 }
@@ -44,7 +48,9 @@ pub async fn info_session(
     let id = request.into_inner().value;
     let sid = Uuid::parse_str(&id).map_err(|_| Status::invalid_argument("invalid UUID"))?;
 
-    let mut guard = sessions.lock().map_err(|_| Status::internal("storage poisoned"))?;
+    let mut guard = sessions
+        .lock()
+        .map_err(|_| Status::internal("storage poisoned"))?;
     // with_session_mut extends TTL; we just check presence
     let found = guard.with_session_mut(&sid, |sess| sess.get_id()).is_some();
     drop(guard);
@@ -61,7 +67,11 @@ pub async fn info_session(
     let resp = pb::InfoSessionResponse {
         code: Code::Ok as u32,
         text: Code::Ok.to_string(),
-        data: Some(pb::Session { id: Some(pb::UuiDv4 { value: sid.to_string() }) }),
+        data: Some(pb::Session {
+            id: Some(pb::UuiDv4 {
+                value: sid.to_string(),
+            }),
+        }),
     };
     Ok(Response::new(resp))
 }

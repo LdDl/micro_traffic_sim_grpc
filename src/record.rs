@@ -54,7 +54,10 @@ impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DecodeError::UnsupportedVersion(v) => {
-                write!(f, "unsupported record batch version {v} (expected {SUPPORTED_VERSION})")
+                write!(
+                    f,
+                    "unsupported record batch version {v} (expected {SUPPORTED_VERSION})"
+                )
             }
             DecodeError::Truncated => write!(f, "record batch blob is truncated"),
         }

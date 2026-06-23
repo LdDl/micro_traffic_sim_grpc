@@ -1,23 +1,23 @@
+use futures_core::Stream;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use tokio::time::{sleep, Duration};
-use futures_core::Stream;
-use tonic::{transport::Server, Request, Response, Status};
+use tokio::time::{Duration, sleep};
+use tonic::{Request, Response, Status, transport::Server};
 
 use micro_traffic_sim::pb;
 use micro_traffic_sim_core::simulation::sessions_storage::SessionsStorage;
 use micro_traffic_sim_core::verbose::VerboseLevel;
 
 // Submodules with per-RPC handlers (keep logic out of this file)
-mod sessions;
-mod grid;
-mod trip;
-mod step;
-mod tls;
 mod conflict_zones;
+mod grid;
 mod record;
 mod recordings;
+mod sessions;
+mod step;
+mod tls;
+mod trip;
 
 // Shared stream type alias for bidirectional streaming
 pub(super) type BoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send + 'static>>;
@@ -134,13 +134,11 @@ pub async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     // MT_SIM_VERBOSE: per-session simulation logging (steps, conflicts, movement). Default: 0 (None)
-    let sim_verbose = parse_verbose(
-        &std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "0".to_string()),
-    );
+    let sim_verbose =
+        parse_verbose(&std::env::var("MT_SIM_VERBOSE").unwrap_or_else(|_| "0".to_string()));
     // MT_SIM_SERVICE_VERBOSE: storage-level logging (session create/expire). Default: 1 (Main)
-    let storage_verbose = parse_verbose(
-        &std::env::var("MT_SIM_SERVICE_VERBOSE").unwrap_or_else(|_| "1".to_string()),
-    );
+    let storage_verbose =
+        parse_verbose(&std::env::var("MT_SIM_SERVICE_VERBOSE").unwrap_or_else(|_| "1".to_string()));
     // Configure a shared SessionsStorage for the server
     let store = SessionsStorage::new()
         .with_session_exp_time(Duration::from_secs(4 * 60))

@@ -28,7 +28,9 @@ pub async fn push_session_tls(
                 Some(id) => &id.value,
                 None => {
                     let _ = tx
-                        .send(Err(Status::invalid_argument("No session ID has been provided")))
+                        .send(Err(Status::invalid_argument(
+                            "No session ID has been provided",
+                        )))
                         .await;
                     return;
                 }
@@ -96,7 +98,8 @@ pub async fn push_session_tls(
                         let times: Vec<i32> = tl_data.times.iter().map(|t| *t as i32).collect();
 
                         // Convert groups
-                        let mut groups: Vec<TrafficLightGroup> = Vec::with_capacity(tl_data.groups.len());
+                        let mut groups: Vec<TrafficLightGroup> =
+                            Vec::with_capacity(tl_data.groups.len());
                         for (group_idx, group_data) in tl_data.groups.iter().enumerate() {
                             // Convert geometry points
                             let geometry: Vec<_> = group_data
@@ -129,7 +132,8 @@ pub async fn push_session_tls(
 
                         // Set coordinates if provided
                         if let Some(geom) = &tl_data.geom {
-                            tl_builder = tl_builder.with_coordinates(new_point(geom.x, geom.y, Some(srid)));
+                            tl_builder =
+                                tl_builder.with_coordinates(new_point(geom.x, geom.y, Some(srid)));
                         }
 
                         let tl = tl_builder.build();
