@@ -28,7 +28,7 @@ const file_service_proto_rawDesc = "" +
 	"uuid.proto\x1a\rsession.proto\x1a\n" +
 	"cell.proto\x1a\n" +
 	"trip.proto\x1a\n" +
-	"step.proto\x1a\ttls.proto\x1a\x14conflict_zones.proto2\xb6\x05\n" +
+	"step.proto\x1a\ttls.proto\x1a\x14conflict_zones.proto\x1a\frecord.proto2\xed\a\n" +
 	"\aService\x12T\n" +
 	"\n" +
 	"NewSession\x12\x1d.micro_traffic_sim.SessionReq\x1a%.micro_traffic_sim.NewSessionResponse\"\x00\x12R\n" +
@@ -37,7 +37,10 @@ const file_service_proto_rawDesc = "" +
 	"\x0fPushSessionTrip\x12\x1e.micro_traffic_sim.SessionTrip\x1a&.micro_traffic_sim.SessionTripResponse\"\x00(\x010\x01\x12e\n" +
 	"\x15SimulationStepSession\x12\x1e.micro_traffic_sim.SessionStep\x1a&.micro_traffic_sim.SessionStepResponse\"\x00(\x010\x01\x12\\\n" +
 	"\x0ePushSessionTLS\x12\x1d.micro_traffic_sim.SessionTLS\x1a%.micro_traffic_sim.SessionTLSResponse\"\x00(\x010\x01\x12z\n" +
-	"\x18PushSessionConflictZones\x12'.micro_traffic_sim.SessionConflictZones\x1a/.micro_traffic_sim.SessionConflictZonesResponse\"\x00(\x010\x01B@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3"
+	"\x18PushSessionConflictZones\x12'.micro_traffic_sim.SessionConflictZones\x1a/.micro_traffic_sim.SessionConflictZonesResponse\"\x00(\x010\x01\x12c\n" +
+	"\fRunAndRecord\x12&.micro_traffic_sim.RunAndRecordRequest\x1a'.micro_traffic_sim.RunAndRecordResponse\"\x000\x01\x12j\n" +
+	"\x0fRecordingStatus\x12).micro_traffic_sim.RecordingStatusRequest\x1a*.micro_traffic_sim.RecordingStatusResponse\"\x00\x12d\n" +
+	"\rStopRecording\x12'.micro_traffic_sim.StopRecordingRequest\x1a(.micro_traffic_sim.StopRecordingResponse\"\x00B@Z>github.com/LdDl/micro_traffic_sim_grpc/clients/go;microtrafficb\x06proto3"
 
 var file_service_proto_goTypes = []any{
 	(*SessionReq)(nil),                   // 0: micro_traffic_sim.SessionReq
@@ -47,13 +50,19 @@ var file_service_proto_goTypes = []any{
 	(*SessionStep)(nil),                  // 4: micro_traffic_sim.SessionStep
 	(*SessionTLS)(nil),                   // 5: micro_traffic_sim.SessionTLS
 	(*SessionConflictZones)(nil),         // 6: micro_traffic_sim.SessionConflictZones
-	(*NewSessionResponse)(nil),           // 7: micro_traffic_sim.NewSessionResponse
-	(*InfoSessionResponse)(nil),          // 8: micro_traffic_sim.InfoSessionResponse
-	(*SessionGridResponse)(nil),          // 9: micro_traffic_sim.SessionGridResponse
-	(*SessionTripResponse)(nil),          // 10: micro_traffic_sim.SessionTripResponse
-	(*SessionStepResponse)(nil),          // 11: micro_traffic_sim.SessionStepResponse
-	(*SessionTLSResponse)(nil),           // 12: micro_traffic_sim.SessionTLSResponse
-	(*SessionConflictZonesResponse)(nil), // 13: micro_traffic_sim.SessionConflictZonesResponse
+	(*RunAndRecordRequest)(nil),          // 7: micro_traffic_sim.RunAndRecordRequest
+	(*RecordingStatusRequest)(nil),       // 8: micro_traffic_sim.RecordingStatusRequest
+	(*StopRecordingRequest)(nil),         // 9: micro_traffic_sim.StopRecordingRequest
+	(*NewSessionResponse)(nil),           // 10: micro_traffic_sim.NewSessionResponse
+	(*InfoSessionResponse)(nil),          // 11: micro_traffic_sim.InfoSessionResponse
+	(*SessionGridResponse)(nil),          // 12: micro_traffic_sim.SessionGridResponse
+	(*SessionTripResponse)(nil),          // 13: micro_traffic_sim.SessionTripResponse
+	(*SessionStepResponse)(nil),          // 14: micro_traffic_sim.SessionStepResponse
+	(*SessionTLSResponse)(nil),           // 15: micro_traffic_sim.SessionTLSResponse
+	(*SessionConflictZonesResponse)(nil), // 16: micro_traffic_sim.SessionConflictZonesResponse
+	(*RunAndRecordResponse)(nil),         // 17: micro_traffic_sim.RunAndRecordResponse
+	(*RecordingStatusResponse)(nil),      // 18: micro_traffic_sim.RecordingStatusResponse
+	(*StopRecordingResponse)(nil),        // 19: micro_traffic_sim.StopRecordingResponse
 }
 var file_service_proto_depIdxs = []int32{
 	0,  // 0: micro_traffic_sim.Service.NewSession:input_type -> micro_traffic_sim.SessionReq
@@ -63,15 +72,21 @@ var file_service_proto_depIdxs = []int32{
 	4,  // 4: micro_traffic_sim.Service.SimulationStepSession:input_type -> micro_traffic_sim.SessionStep
 	5,  // 5: micro_traffic_sim.Service.PushSessionTLS:input_type -> micro_traffic_sim.SessionTLS
 	6,  // 6: micro_traffic_sim.Service.PushSessionConflictZones:input_type -> micro_traffic_sim.SessionConflictZones
-	7,  // 7: micro_traffic_sim.Service.NewSession:output_type -> micro_traffic_sim.NewSessionResponse
-	8,  // 8: micro_traffic_sim.Service.InfoSession:output_type -> micro_traffic_sim.InfoSessionResponse
-	9,  // 9: micro_traffic_sim.Service.PushSessionGrid:output_type -> micro_traffic_sim.SessionGridResponse
-	10, // 10: micro_traffic_sim.Service.PushSessionTrip:output_type -> micro_traffic_sim.SessionTripResponse
-	11, // 11: micro_traffic_sim.Service.SimulationStepSession:output_type -> micro_traffic_sim.SessionStepResponse
-	12, // 12: micro_traffic_sim.Service.PushSessionTLS:output_type -> micro_traffic_sim.SessionTLSResponse
-	13, // 13: micro_traffic_sim.Service.PushSessionConflictZones:output_type -> micro_traffic_sim.SessionConflictZonesResponse
-	7,  // [7:14] is the sub-list for method output_type
-	0,  // [0:7] is the sub-list for method input_type
+	7,  // 7: micro_traffic_sim.Service.RunAndRecord:input_type -> micro_traffic_sim.RunAndRecordRequest
+	8,  // 8: micro_traffic_sim.Service.RecordingStatus:input_type -> micro_traffic_sim.RecordingStatusRequest
+	9,  // 9: micro_traffic_sim.Service.StopRecording:input_type -> micro_traffic_sim.StopRecordingRequest
+	10, // 10: micro_traffic_sim.Service.NewSession:output_type -> micro_traffic_sim.NewSessionResponse
+	11, // 11: micro_traffic_sim.Service.InfoSession:output_type -> micro_traffic_sim.InfoSessionResponse
+	12, // 12: micro_traffic_sim.Service.PushSessionGrid:output_type -> micro_traffic_sim.SessionGridResponse
+	13, // 13: micro_traffic_sim.Service.PushSessionTrip:output_type -> micro_traffic_sim.SessionTripResponse
+	14, // 14: micro_traffic_sim.Service.SimulationStepSession:output_type -> micro_traffic_sim.SessionStepResponse
+	15, // 15: micro_traffic_sim.Service.PushSessionTLS:output_type -> micro_traffic_sim.SessionTLSResponse
+	16, // 16: micro_traffic_sim.Service.PushSessionConflictZones:output_type -> micro_traffic_sim.SessionConflictZonesResponse
+	17, // 17: micro_traffic_sim.Service.RunAndRecord:output_type -> micro_traffic_sim.RunAndRecordResponse
+	18, // 18: micro_traffic_sim.Service.RecordingStatus:output_type -> micro_traffic_sim.RecordingStatusResponse
+	19, // 19: micro_traffic_sim.Service.StopRecording:output_type -> micro_traffic_sim.StopRecordingResponse
+	10, // [10:20] is the sub-list for method output_type
+	0,  // [0:10] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -89,6 +104,7 @@ func file_service_proto_init() {
 	file_step_proto_init()
 	file_tls_proto_init()
 	file_conflict_zones_proto_init()
+	file_record_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
